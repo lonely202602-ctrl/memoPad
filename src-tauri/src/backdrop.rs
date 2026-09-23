@@ -278,10 +278,10 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
 }
 
 /// Win11 22H2+ 的组合层 Acrylic 失焦会被系统撤掉模糊。
-/// 失焦后系统可能在事件之后才撤销，所以除了立即补，还延迟补一次。
+/// 只处理失焦路径：系统撤销发生在失焦事件之后，所以延迟一次补拍即可，
+/// 立即补拍反而会与系统撤销打架造成频闪；聚焦时系统自己渲染，无需干预。
 #[cfg(windows)]
 pub fn reapply_acrylic(window: &tauri::WebviewWindow) {
-    reapply_inner(window);
     let delay: u64 = std::env::var("MEMOPAD_REAPPLY_DELAY_MS")
         .ok()
         .and_then(|v| v.parse().ok())

@@ -111,7 +111,8 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Focused(_) = event {
+            // 仅在失焦时补模糊：聚焦时系统本来就渲染模糊，不要动它（动了会频闪）
+            if let tauri::WindowEvent::Focused(false) = event {
                 if window.label() == "main" {
                     if let Some(w) = window.get_webview_window("main") {
                         let s = storage::load_settings();
