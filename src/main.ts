@@ -32,6 +32,9 @@ const dateLabel = $("#date-label");
 const carryRow = $("#carry-row");
 const carryBtn = $("#carry-btn");
 const drawer = $("#drawer");
+const todoDrawer = $("#todo-drawer");
+
+let editing: Todo | null = null;
 
 // ---- 日期工具 ----
 function pad(n: number): string {
@@ -134,6 +137,7 @@ function addTodo(): void {
     kind: view,
     date: view === "daily" ? selectedDate : null,
     content,
+    detail: null,
     done: false,
     createdAt: Date.now(),
     doneAt: null,
@@ -190,7 +194,7 @@ function esc(s: string): string {
 function itemHtml(t: Todo): string {
   return `<div class="item${t.done ? " done" : ""}" data-id="${t.id}">
     <button class="check" data-act="toggle" title="${t.done ? "标记为未完成" : "确认完成"}"></button>
-    <span class="content" data-act="edit" title="双击编辑">${esc(t.content)}</span>
+    <span class="content" data-act="open" title="点击编辑详情">${esc(t.content)}</span>
     <button class="del" data-act="del" title="删除">✕</button>
   </div>`;
 }
@@ -241,35 +245,38 @@ function renderSettingsState(): void {
 }
 
 // ---- 事件绑定 ----
-function startEdit(item: HTMLElement, t: Todo): void {
-  const span = item.querySelector<HTMLElement>(".content");
-  if (!span || item.querySelector(".content-editing")) return;
-  const input = document.createElement("input");
-  input.className = "content-editing";
-  input.value = t.content;
-  input.maxLength = 200;
-  span.replaceWith(input);
-  input.focus();
-  input.select();
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    const v = input.value.trim();
-    if (v && v !== t.content) {
-      t.content = v;
-      saveTodosSoon();
-    }
-    render();
-  };
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") commit();
-    else if (e.key === "Escape") {
-      committed = true;
-      render();
-    }
-  });
-  input.addEventListener("blur", commit);
+// ---- 详情抽屉 ----
+function fmtTs(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderDetailState(): void {
+  if (!editing) return;
+  const btn = $("#detail-done");
+  btn.textContent = editing.done ? "取消完成" : "标记完成";
+  $("#detail-meta").textContent =
+    `${editing.kind === "daily" ? `每日 · ${editing.date}` : "长期"} · 创建于 ${fmtTs(editing.createdAt)}` +
+    (editing.doneAt ? ` · 完成于 ${fmtTs(editing.doneAt)}` : "");
+}
+
+function openTodoDetail(t: Todo): void {
+  editing = t;
+  $<HTMLInputElement>("#detail-title").value = t.content;
+  $<HTMLTextAreaElement>("#detail-text").value = t.detail ?? "";
+  renderDetailState();
+  todoDrawer.classList.remove("hidden");
+  $<HTMLInputElement>("#detail-title").focus();
+}
+
+function closeTodoDetail(): void {
+  editing = null;
+  todoDrawer.classList.add("hidden");
+}
+
+function syncListItem(t: Todo): void {
+  const span = listEl.querySelector<HTMLElement>(`.item[data-id="${t.id}"] .content`);
+  if (span) span.textContent = t.content;
 }
 
 async function bindEvents(): Promise<void> {
@@ -312,13 +319,7 @@ async function bindEvents(): Promise<void> {
     if (!t) return;
     if (act === "toggle") toggleTodo(t);
     else if (act === "del") deleteTodo(t);
-  });
-  listEl.addEventListener("dblclick", (e) => {
-    const span = (e.target as HTMLElement).closest<HTMLElement>('[data-act="edit"]');
-    if (!span) return;
-    const item = span.closest<HTMLElement>(".item");
-    const t = item ? todos.find((x) => x.id === item.dataset.id) : undefined;
-    if (item && t) startEdit(item, t);
+    else if (act === "open") openTodoDetail(t);
   });
 
   // 添加
@@ -388,6 +389,37 @@ async function bindEvents(): Promise<void> {
       .catch((e) => console.error("更改存储位置失败", e));
   });
   $("#open-dir").addEventListener("click", () => void api.openDataFolder());
+
+  // 待办详情抽屉
+  $<HTMLInputElement>("#detail-title").addEventListener("input", () => {
+    if (!editing) return;
+    editing.content = $<HTMLInputElement>("#detail-title").value;
+    syncListItem(editing);
+    saveTodosSoon();
+  });
+  $<HTMLTextAreaElement>("#detail-text").addEventListener("input", () => {
+    if (!editing) return;
+    const v = $<HTMLTextAreaElement>("#detail-text").value;
+    editing.detail = v.trim() ? v : null;
+    saveTodosSoon();
+  });
+  $("#detail-done").addEventListener("click", () => {
+    if (!editing) return;
+    toggleTodo(editing);
+    renderDetailState();
+  });
+  $("#detail-delete").addEventListener("click", () => {
+    if (!editing) return;
+    const t = editing;
+    closeTodoDetail();
+    deleteTodo(t);
+  });
+  $("#todo-drawer-close").addEventListener("click", closeTodoDetail);
+  [$("#detail-title"), $("#detail-text")].forEach((el) => {
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeTodoDetail();
+    });
+  });
 
   // 调整大小
   $("#grip").addEventListener("mousedown", (e) => {

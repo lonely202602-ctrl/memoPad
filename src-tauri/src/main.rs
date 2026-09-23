@@ -110,6 +110,18 @@ fn main() {
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Focused(_) = event {
+                if window.label() == "main" {
+                    if let Some(w) = window.get_webview_window("main") {
+                        let s = storage::load_settings();
+                        if s.blur == "acrylic" {
+                            backdrop::reapply_acrylic(&w);
+                        }
+                    }
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running memopad");
 }

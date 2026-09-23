@@ -63,6 +63,11 @@ fn hwnd_raw(window: &tauri::WebviewWindow) -> Option<*mut std::ffi::c_void> {
 }
 
 #[cfg(windows)]
+static COMP_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+#[cfg(windows)]
+static LAST_DARK: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0); // 0=跟随系统 1=浅 2=深
+
+#[cfg(windows)]
 fn dwm_set_u32(hwnd: *mut std::ffi::c_void, attr: u32, value: u32) -> bool {
     unsafe {
         raw::dwm_set_window_attribute(hwnd, attr, &value as *const u32 as *const std::ffi::c_void, 4) == 0
@@ -182,12 +187,19 @@ pub fn clear(window: &tauri::WebviewWindow) {
 /// 应用指定效果，返回实际生效的模式（自动降级）
 #[cfg(windows)]
 pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> Result<String, String> {
+    use std::sync::atomic::Ordering::Relaxed;
+    LAST_DARK.store(match dark {
+        Some(false) => 1,
+        Some(true) => 2,
+        None => 0,
+    }, Relaxed);
     round_window(window);
     apply_theme_chrome(window, dark);
     if let Some(hwnd) = hwnd_raw(window) {
         match mode {
             "mica" => {
                 disable_accent(hwnd);
+                COMP_ACTIVE.store(false, Relaxed);
                 if dwm_backdrop(hwnd, DWMSBT_MAINWINDOW) {
                     return Ok("mica".into());
                 }
@@ -195,30 +207,56 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
                     return Ok("acrylic".into());
                 }
                 if comp_acrylic(window, dark) {
+                    COMP_ACTIVE.store(true, Relaxed);
                     return Ok("acrylic".into());
                 }
             }
             "acrylic" => {
                 disable_accent(hwnd);
                 if dwm_backdrop(hwnd, DWMSBT_TRANSIENTWINDOW) {
+                    COMP_ACTIVE.store(false, Relaxed);
                     return Ok("acrylic".into());
                 }
                 if dwm_backdrop(hwnd, DWMSBT_MAINWINDOW) {
+                    COMP_ACTIVE.store(false, Relaxed);
                     return Ok("mica".into());
                 }
                 if comp_acrylic(window, dark) {
+                    COMP_ACTIVE.store(true, Relaxed);
                     return Ok("acrylic".into());
                 }
             }
             _ => {
                 dwm_backdrop(hwnd, DWMSBT_NONE);
                 disable_accent(hwnd);
+                COMP_ACTIVE.store(false, Relaxed);
                 return Ok("none".into());
             }
         }
     }
     Ok("none".into())
 }
+
+/// Win11 22H2+ 的组合层 Acrylic 失焦会被系统撤掉模糊，焦点变化时重新施加以维持常态毛玻璃
+#[cfg(windows)]
+pub fn reapply_acrylic(window: &tauri::WebviewWindow) {
+    use std::sync::atomic::Ordering::Relaxed;
+    if !COMP_ACTIVE.load(Relaxed) {
+        return;
+    }
+    let dark = match LAST_DARK.load(Relaxed) {
+        1 => Some(false),
+        2 => Some(true),
+        _ => None,
+    };
+    if let Some(hwnd) = hwnd_raw(window) {
+        disable_accent(hwnd);
+    }
+    comp_acrylic(window, dark);
+}
+
+#[cfg(not(windows))]
+pub fn reapply_acrylic(_window: &tauri::WebviewWindow) {}
 
 #[cfg(not(windows))]
 pub fn apply(_window: &tauri::WebviewWindow, _mode: &str, _dark: Option<bool>) -> Result<String, String> {

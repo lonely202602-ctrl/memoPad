@@ -86,6 +86,28 @@
           <div class="about" id="about"></div>
         </div>
       </div>
+
+      <div class="drawer hidden" id="todo-drawer">
+        <div class="drawer-head">
+          <span>待办详情</span>
+          <button id="todo-drawer-close" class="icon-btn" title="关闭">✕</button>
+        </div>
+        <div class="drawer-body">
+          <div class="setting">
+            <label>标题</label>
+            <input id="detail-title" class="text-input" maxlength="200" autocomplete="off" />
+          </div>
+          <div class="setting">
+            <label>详情</label>
+            <textarea id="detail-text" class="text-input area" rows="9" placeholder="补充说明、备注、链接…&#10;自动保存"></textarea>
+          </div>
+          <div class="meta" id="detail-meta"></div>
+          <div class="detail-actions">
+            <button id="detail-delete" class="mini-btn danger">删除待办</button>
+            <button id="detail-done" class="mini-btn"></button>
+          </div>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -9,6 +9,7 @@ export interface Todo {
   kind: View;
   date: string | null; // YYYY-MM-DD，仅 daily
   content: string;
+  detail: string | null; // 详情补充说明
   done: boolean;
   createdAt: number;
   doneAt: number | null;

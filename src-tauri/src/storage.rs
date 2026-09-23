@@ -11,6 +11,7 @@ pub struct Todo {
     pub kind: String,           // "daily" | "longterm"
     pub date: Option<String>,   // YYYY-MM-DD，仅 daily
     pub content: String,
+    pub detail: Option<String>, // 详情补充说明
     pub done: bool,
     pub created_at: u64,
     pub done_at: Option<u64>,
