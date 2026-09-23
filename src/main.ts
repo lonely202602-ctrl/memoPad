@@ -585,6 +585,10 @@ function renderSettingsState(): void {
   $<HTMLInputElement>("#lan-port").value = String(settings.lanPort ?? 9600);
   const alpha = settings.glassAlpha ?? 0.45;
   $<HTMLInputElement>("#glass-alpha").value = String(Math.round(alpha * 100));
+  // 「关闭」模式下表面为实色，透明度无意义——置灰并说明
+  const alphaDisabled = settings.blur === "none";
+  $<HTMLInputElement>("#glass-alpha").disabled = alphaDisabled;
+  $("#alpha-hint").textContent = alphaDisabled ? "已关闭磨砂：便签为实色，无透明度可调。" : "";
   $("#glass-alpha-val").textContent = `${Math.round(alpha * 100)}%`;
   const pathEl = $("#data-path");
   pathEl.textContent = settings.dataDir;
@@ -794,7 +798,7 @@ async function bindEvents(): Promise<void> {
   $<HTMLInputElement>("#glass-alpha").addEventListener("input", () => {
     const v = Number($<HTMLInputElement>("#glass-alpha").value); // 20~90
     settings.glassAlpha = v / 100;
-    document.body.style.setProperty("--base-alpha", String(v / 100));
+    applyThemeClass(); // 统一口径：none 模式保底 90% 的可读性钳制
     $("#glass-alpha-val").textContent = `${v}%`;
     persistSettingsSoon();
   });

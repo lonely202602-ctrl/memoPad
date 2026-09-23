@@ -879,6 +879,11 @@ input[type="range"] {
   cursor: pointer;
 }
 
+input[type="range"]:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .seg-val {
   color: var(--accent-deep);
   font-weight: 600;
