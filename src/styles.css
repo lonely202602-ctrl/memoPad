@@ -23,9 +23,9 @@ body[data-theme="light"] {
 
 body[data-theme="dark"] {
   --base-alpha: 0.45;
-  --tint-color: rgba(22, 23, 28, var(--base-alpha));
+  --tint-color: rgba(20, 21, 26, var(--base-alpha));
   --tint-solid: rgba(22, 23, 28, 0.97);
-  --wall-filter: blur(40px) saturate(0.85) brightness(0.85);
+  --wall-filter: blur(40px) saturate(0.9) brightness(1.08);
   --base-border: rgba(255, 255, 255, 0.12);
   --strip-bg: rgba(255, 255, 255, 0.07);
   --strip-border: rgba(255, 255, 255, 0.1);
@@ -134,14 +134,15 @@ body {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* 自绘毛玻璃层：按窗口屏幕坐标对齐的模糊壁纸，恒定渲染、与焦点无关 */
+/* 自绘毛玻璃层：壁纸层比屏幕外扩一圈并只光栅化一次模糊，
+   拖动窗口时每帧仅写 transform（纯合成器搬运），与焦点无关 */
 .wallpaper {
   position: absolute;
-  inset: -90px;
+  inset: -120px;
   z-index: -1;
   background-repeat: no-repeat;
   filter: var(--wall-filter);
-  transform: translateZ(0);
+  will-change: transform;
   pointer-events: none;
 }
 
@@ -209,6 +210,15 @@ body[data-blur="none"] .wallpaper {
 .icon-btn:hover {
   background: var(--hover-bg);
   color: var(--text);
+}
+
+.pin-btn.on {
+  color: var(--accent-deep);
+  background: rgba(232, 163, 61, 0.18);
+}
+
+body[data-theme="dark"] .pin-btn.on {
+  color: var(--accent);
 }
 
 /* ===== 页签 ===== */
@@ -424,17 +434,47 @@ body[data-theme="dark"] .progress-text b {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 6px 12px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--text-dim) transparent;
+  /* 独立合成层：列表滚动只走合成器，不触发壁纸模糊层重绘 */
+  transform: translateZ(0);
 }
 
-.list::-webkit-scrollbar {
-  width: 6px;
+.list,
+.drawer-body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.list::-webkit-scrollbar-thumb {
-  background: var(--strip-border);
+.list::-webkit-scrollbar,
+.drawer-body::-webkit-scrollbar {
+  display: none;
+}
+
+/* 自绘滚动条：滚动/拖动时淡入，停止后淡出 */
+.fancy-scroll {
+  position: absolute;
+  width: 10px;
+  z-index: 12;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.fancy-thumb {
+  position: absolute;
+  right: 1px;
+  width: 5px;
   border-radius: 3px;
+  background: rgba(130, 132, 138, 0.55);
+  pointer-events: auto;
+  cursor: default;
+}
+
+body[data-theme='dark'] .fancy-thumb {
+  background: rgba(200, 202, 210, 0.4);
+}
+
+.wallpaper::after {
+  transition: background-color 0.3s ease;
 }
 
 .item {
@@ -835,6 +875,11 @@ input[type="range"] {
 .seg-val {
   color: var(--accent-deep);
   font-weight: 600;
+}
+
+.uninstall-btn {
+  width: 100%;
+  padding: 8px;
 }
 
 .mini-btn.danger {

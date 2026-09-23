@@ -9,6 +9,28 @@ pub fn get_wallpaper_data_url() -> Option<String> {
     wallpaper::wallpaper_data_url()
 }
 
+/// 运行安装版自带的卸载程序（便携版没有卸载器，返回提示文案）
+#[tauri::command]
+pub fn run_uninstaller() -> Result<String, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let uninstaller = exe
+        .parent()
+        .ok_or_else(|| "无法定位程序目录".to_string())?
+        .join("uninstall.exe");
+    if !uninstaller.exists() {
+        return Err("当前是便携版，无需卸载——直接删除程序文件即可".into());
+    }
+    std::process::Command::new(&uninstaller)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    // 让卸载器先完成自解压，随后退出本应用以便卸载
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::process::exit(0);
+    });
+    Ok("已启动卸载程序".into())
+}
+
 #[tauri::command]
 pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -61,9 +83,7 @@ pub fn change_data_dir(new_dir: String) -> Result<Vec<storage::Todo>, String> {
     std::fs::create_dir_all(&new_dir).map_err(|e| format!("无法创建目录: {e}"))?;
     s.data_dir = new_dir;
     let new_path = storage::data_path(&s);
-    if old_path.exists() && old_path != new_path && !new_path.exists() {
-        std::fs::rename(&old_path, &new_path).map_err(|e| format!("数据迁移失败: {e}"))?;
-    }
+    storage::migrate_data_file(&old_path, &new_path)?;
     storage::save_settings(&s)?;
     Ok(storage::load_todos(&s))
 }

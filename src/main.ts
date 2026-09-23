@@ -1,6 +1,6 @@
 import "./styles.css";
 import { api, type Blur, type Settings, type Theme, type Todo, type View } from "./api";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { availableMonitors, getCurrentWindow } from "@tauri-apps/api/window";
 
 const win = getCurrentWindow();
 
@@ -49,6 +49,82 @@ let calM = 0; // 0-based month
 let knownIds = new Set<string>();
 
 const REDUCE_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// ---- 自绘滚动条：滚动/拖动时淡入，停止后淡出（不依赖原生滚动条） ----
+function setupFancyScroll(container: HTMLElement, host: HTMLElement) {  const bar = document.createElement("div");
+  bar.className = "fancy-scroll";
+  const thumb = document.createElement("div");
+  thumb.className = "fancy-thumb";
+  bar.appendChild(thumb);
+  host.appendChild(bar);
+  let hideTimer: ReturnType<typeof setTimeout> | undefined;
+  let dragging = false;
+  let rafId = 0;
+
+  function update(): void {
+    rafId = 0;
+    const sh = container.scrollHeight;
+    const ch = container.clientHeight;
+    const rect = container.getBoundingClientRect();
+    const hostRect = host.getBoundingClientRect();
+    bar.style.top = `${rect.top - hostRect.top}px`;
+    bar.style.left = `${rect.right - hostRect.left - 10}px`;
+    bar.style.height = `${rect.height}px`;
+    if (sh <= ch + 1) {
+      bar.style.opacity = "0";
+      thumb.style.display = "none";
+      return;
+    }
+    thumb.style.display = "block";
+    const th = Math.max(28, (ch / sh) * rect.height);
+    const trackH = rect.height - th;
+    thumb.style.height = `${th}px`;
+    thumb.style.top = `${(container.scrollTop / (sh - ch)) * trackH}px`;
+  }
+
+  function scheduleUpdate(): void {
+    if (!rafId) rafId = requestAnimationFrame(update);
+  }
+
+  function show(): void {
+    scheduleUpdate();
+    if (thumb.style.display === "none") return;
+    bar.style.opacity = "1";
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      if (!dragging) bar.style.opacity = "0";
+    }, 700);
+  }
+
+  thumb.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    thumb.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startScroll = container.scrollTop;
+    const sh = container.scrollHeight - container.clientHeight;
+    const trackH = bar.clientHeight - thumb.offsetHeight;
+    if (sh <= 0 || trackH <= 0) return;
+    const onMove = (ev: PointerEvent) => {
+      container.scrollTop = startScroll + ((ev.clientY - startY) / trackH) * sh;
+    };
+    const onUp = () => {
+      dragging = false;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      show();
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  });
+
+  container.addEventListener("scroll", show);
+  new ResizeObserver(update).observe(container);
+  update();
+  return { update, show };
+}
+
+const listScroll = setupFancyScroll(listEl, document.querySelector<HTMLElement>(".base")!);
+const drawerScroll = setupFancyScroll($<HTMLElement>(".drawer-body"), $<HTMLElement>(".drawer"));
 
 // ---- FLIP 过渡：仅 transform 合成器动画，不触发重排 ----
 function captureRects(): Map<string, DOMRect> {
@@ -146,20 +222,71 @@ function updateWallpaperLayer(): void {
   }
   wallpaperEl.style.display = "block";
   wallpaperEl.style.backgroundImage = `url("${wallpaperUrl}")`;
+  sizeWallpaperLayer();
   void alignWallpaper();
 }
 
-// 壁纸按窗口在屏幕上的逻辑坐标反向对齐，挪动便签时模糊背景保持贴合。
-// 缩放比启动时缓存一次；拖动中的坐标直接取移动事件负载，零 IPC 实时对齐
+// 壁纸按窗口所在屏幕坐标反向对齐，挪动便签时模糊背景保持贴合。
+// 性能关键：模糊只光栅化一次，拖动中每帧仅写 transform（纯合成器搬运，
+// 不重跑 44px 模糊）。对齐基准是窗口所在显示器的原点；跨显示器拖动时
+// 从移动事件负载发现越界，再异步刷新显示器信息（低频路径）
 let scaleCache = 1;
+const monCache = { x: 0, y: 0, w: 0, h: 0 }; // 当前显示器物理坐标与尺寸
+const WALL_M = 120; // 外扩余量，与 styles.css 的 .wallpaper inset 保持一致
+
+async function refreshMonitor(): Promise<void> {
+  try {
+    const pos = await win.outerPosition();
+    const mons = await availableMonitors();
+    const cur =
+      mons.find(
+        (m) =>
+          pos.x >= m.position.x &&
+          pos.x < m.position.x + m.size.width &&
+          pos.y >= m.position.y &&
+          pos.y < m.position.y + m.size.height
+      ) ?? mons[0];
+    if (cur) {
+      monCache.x = cur.position.x;
+      monCache.y = cur.position.y;
+      monCache.w = cur.size.width;
+      monCache.h = cur.size.height;
+      scaleCache = cur.scaleFactor;
+    }
+  } catch {
+    /* 沿用旧值 */
+  }
+}
+
+function sizeWallpaperLayer(): void {
+  const sw = window.screen.width;
+  const sh = window.screen.height;
+  wallpaperEl.style.width = `${sw + WALL_M * 2}px`;
+  wallpaperEl.style.height = `${sh + WALL_M * 2}px`;
+  wallpaperEl.style.backgroundSize = `${sw}px ${sh}px`;
+  wallpaperEl.style.backgroundPosition = "0 0";
+}
+
 function alignWallpaper(x?: number, y?: number): void {
   if (settings.blur !== "acrylic") return;
   const apply = (px: number, py: number) => {
-    wallpaperEl.style.backgroundSize = `${window.screen.width}px ${window.screen.height}px`;
-    wallpaperEl.style.backgroundPosition = `${-px / scaleCache}px ${-py / scaleCache}px`;
+    const tx = WALL_M + (monCache.x - px) / scaleCache;
+    const ty = WALL_M + (monCache.y - py) / scaleCache;
+    wallpaperEl.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
   };
   if (x !== undefined && y !== undefined) {
     apply(x, y);
+    if (
+      x < monCache.x ||
+      x >= monCache.x + monCache.w ||
+      y < monCache.y ||
+      y >= monCache.y + monCache.h
+    ) {
+      void refreshMonitor().then(() => {
+        sizeWallpaperLayer();
+        alignWallpaper(x, y);
+      });
+    }
     return;
   }
   void win.outerPosition().then((p) => apply(p.x, p.y)).catch(() => {});
@@ -299,6 +426,8 @@ function toggleTodo(t: Todo): void {
   renderFlip();
 }
 
+// 删除：数据立即移除并让列表滑升补位（FLIP），
+// 被删条目以「替身」在原位淡出滑出——与条目数量无关，全程只走合成器动画
 function deleteTodo(t: Todo): void {
   const el = listEl.querySelector<HTMLElement>(`.item[data-id="${t.id}"]`);
   if (!el || REDUCE_MOTION.matches) {
@@ -307,55 +436,61 @@ function deleteTodo(t: Todo): void {
     render();
     return;
   }
-  // 退出动画：右滑淡出 + 高度塌陷（一次性小元素动画），剩余项随后滑升补位
-  el.style.overflow = "hidden";
-  el.style.pointerEvents = "none";
-  const anim = el.animate(
-    [
-      { opacity: 1, height: `${el.offsetHeight}px`, marginBottom: "7px", transform: "none" },
-      { opacity: 0, height: "0px", marginBottom: "0px", transform: "translateX(28px)" },
-    ],
-    { duration: 190, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
-  );
-  anim.onfinish = () => {
-    todos = todos.filter((x) => x.id !== t.id);
-    saveTodosSoon();
-    renderFlip();
-  };
+  const rect = el.getBoundingClientRect();
+  const clone = el.cloneNode(true) as HTMLElement;
+  clone.style.position = "fixed";
+  clone.style.left = `${rect.left}px`;
+  clone.style.top = `${rect.top}px`;
+  clone.style.width = `${rect.width}px`;
+  clone.style.margin = "0";
+  clone.style.zIndex = "60";
+  clone.style.pointerEvents = "none";
+  document.body.appendChild(clone);
+  todos = todos.filter((x) => x.id !== t.id);
+  saveTodosSoon();
+  renderFlip();
+  clone
+    .animate(
+      [
+        { opacity: 1, transform: "none" },
+        { opacity: 0, transform: "translateX(26px)" },
+      ],
+      { duration: 170, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
+    )
+    .onfinish = () => clone.remove();
 }
 
 function clearDone(): void {
-  const scope = currentScope().filter((t) => t.done);
-  if (scope.length === 0) return;
-  const ids = new Set(scope.map((t) => t.id));
+  const ids = new Set(currentScope().filter((t) => t.done).map((t) => t.id));
+  if (ids.size === 0) return;
   const els = [...listEl.querySelectorAll<HTMLElement>(".item")].filter((el) =>
     ids.has(el.dataset.id ?? "")
   );
-  if (REDUCE_MOTION.matches || els.length === 0) {
-    todos = todos.filter((t) => !ids.has(t.id));
-    saveTodosSoon();
-    render();
-    return;
-  }
+  // 替身级联淡出
   els.forEach((el, i) => {
-    el.style.overflow = "hidden";
-    el.style.pointerEvents = "none";
-    el.animate(
-      [
-        { opacity: 1, height: `${el.offsetHeight}px`, marginBottom: "7px", transform: "none" },
-        { opacity: 0, height: "0px", marginBottom: "0px", transform: "translateX(28px)" },
-      ],
-      { duration: 170, delay: i * 40, easing: "ease-out", fill: "forwards" }
-    );
+    const rect = el.getBoundingClientRect();
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.position = "fixed";
+    clone.style.left = `${rect.left}px`;
+    clone.style.top = `${rect.top}px`;
+    clone.style.width = `${rect.width}px`;
+    clone.style.margin = "0";
+    clone.style.zIndex = "60";
+    clone.style.pointerEvents = "none";
+    document.body.appendChild(clone);
+    clone
+      .animate(
+        [
+          { opacity: 1, transform: "none" },
+          { opacity: 0, transform: "translateX(26px)" },
+        ],
+        { duration: 160, delay: i * 30, easing: "ease-out" }
+      )
+      .onfinish = () => clone.remove();
   });
-  setTimeout(
-    () => {
-      todos = todos.filter((t) => !ids.has(t.id));
-      saveTodosSoon();
-      renderFlip();
-    },
-    170 + (els.length - 1) * 40 + 40
-  );
+  todos = todos.filter((t) => !ids.has(t.id));
+  saveTodosSoon();
+  renderFlip();
 }
 
 function carryOverToToday(): void {
@@ -434,6 +569,7 @@ function render(): void {
   const pastPending = view === "daily" && !isToday ? pending.length : 0;
   carryRow.classList.toggle("hidden", pastPending === 0);
   if (pastPending > 0) carryBtn.textContent = `把 ${pastPending} 项未完成移到今天`;
+  listScroll.update();
 }
 
 function renderSettingsState(): void {
@@ -444,6 +580,7 @@ function renderSettingsState(): void {
     b.classList.toggle("active", b.dataset.blurOpt === settings.blur);
   });
   $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
+  $("#btn-pin").classList.toggle("on", settings.alwaysOnTop);
   $("#lan-switch").classList.toggle("on", settings.lanView);
   $<HTMLInputElement>("#lan-port").value = String(settings.lanPort ?? 9600);
   const alpha = settings.glassAlpha ?? 0.45;
@@ -564,10 +701,19 @@ async function bindEvents(): Promise<void> {
   carryBtn.addEventListener("click", carryOverToToday);
 
   // 窗口按钮
+  // 标题栏置顶
+  $("#btn-pin").addEventListener("click", () => {
+    settings.alwaysOnTop = !settings.alwaysOnTop;
+    void win.setAlwaysOnTop(settings.alwaysOnTop);
+    $("#btn-pin").classList.toggle("on", settings.alwaysOnTop);
+    $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
+    persistSettings();
+  });
   $("#btn-hide").addEventListener("click", () => void win.hide());
   $("#btn-settings").addEventListener("click", () => {
     drawer.classList.remove("hidden");
     renderSettingsState();
+    drawerScroll.show();
   });
   $("#drawer-close").addEventListener("click", () => drawer.classList.add("hidden"));
   $("#btn-theme").addEventListener("click", () => {
@@ -584,7 +730,10 @@ async function bindEvents(): Promise<void> {
       settings.blur = b.dataset.blurOpt as Blur;
       applyThemeClass();
       void (async () => {
-        if (settings.blur === "acrylic") await ensureWallpaper();
+        if (settings.blur === "acrylic") {
+          await ensureWallpaper();
+          await refreshMonitor();
+        }
         await refreshBlur();
         persistSettings();
         renderSettingsState();
@@ -629,6 +778,29 @@ async function bindEvents(): Promise<void> {
       .catch((e) => console.error("更改存储位置失败", e));
   });
   $("#open-dir").addEventListener("click", () => void api.openDataFolder());
+
+  // 卸载（两步确认：安装版运行卸载器；便携版提示直接删除）
+  const ub = $("#uninstall-btn");
+  const uh = $("#uninstall-hint");
+  let uninstallArmed = false;
+  let uninstallArmTimer: ReturnType<typeof setTimeout> | undefined;
+  ub.addEventListener("click", () => {
+    if (!uninstallArmed) {
+      uninstallArmed = true;
+      ub.textContent = "确认卸载？再点一次";
+      uninstallArmTimer = setTimeout(() => {
+        uninstallArmed = false;
+        ub.textContent = "卸载 memoPad";
+      }, 2500);
+      return;
+    }
+    clearTimeout(uninstallArmTimer);
+    api.runUninstaller().catch((e) => {
+      uh.textContent = String(e);
+      uninstallArmed = false;
+      ub.textContent = "卸载 memoPad";
+    });
+  });
 
   // 待办详情抽屉
   $<HTMLInputElement>("#detail-title").addEventListener("input", () => {
@@ -716,16 +888,14 @@ async function bindEvents(): Promise<void> {
     void win.startResizeDragging("SouthEast");
   });
 
-  // 窗口移动后保存位置（防抖）+ 壁纸层重新对齐
-  let alignTimer: ReturnType<typeof setTimeout> | undefined;
+  // 窗口移动后保存位置（防抖）+ 壁纸层实时对齐（transform 直写，无需节流）
   let lastX: number | null = null;
   let lastY: number | null = null;
   await win.onMoved(({ payload }) => {
     if (payload.x === lastX && payload.y === lastY) return;
     lastX = payload.x;
     lastY = payload.y;
-    clearTimeout(alignTimer);
-    alignTimer = setTimeout(() => alignWallpaper(lastX ?? undefined, lastY ?? undefined), 40);
+    alignWallpaper(payload.x, payload.y);
     clearTimeout(posSaveTimer);
     posSaveTimer = setTimeout(saveWindowPos, 600);
   });
@@ -748,7 +918,7 @@ async function boot(): Promise<void> {
   render();
   if (settings.blur === "acrylic") {
     await ensureWallpaper();
-    scaleCache = await win.scaleFactor().catch(() => 1);
+    await refreshMonitor();
   }
   updateWallpaperLayer();
   if (!settings.onboarded) {

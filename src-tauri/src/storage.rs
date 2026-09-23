@@ -102,6 +102,24 @@ pub fn save_todos(s: &Settings, todos: &[Todo]) -> Result<(), String> {
     atomic_write(&data_path(s), bytes)
 }
 
+/// 数据迁移：旧位置的待办文件搬到新位置。
+/// rename 跨磁盘会失败（C 盘 → D 盘），失败时自动降级为复制 + 删除原件。
+pub fn migrate_data_file(old_path: &Path, new_path: &Path) -> Result<(), String> {
+    if !old_path.exists() || old_path == new_path || new_path.exists() {
+        return Ok(());
+    }
+    if std::fs::rename(old_path, new_path).is_ok() {
+        return Ok(());
+    }
+    std::fs::copy(old_path, new_path)
+        .map_err(|e| format!("跨盘迁移失败: {e}"))?;
+    // 安全阀：只删除我们自己的数据文件，绝不能碰用户目录里的其他东西
+    let name_ok = old_path.file_name().map(|n| n == DATA_FILE).unwrap_or(false);
+    if name_ok {
+        let _ = std::fs::remove_file(old_path);
+    }
+    Ok(())
+}
 /// 原子写入：先写临时文件再改名，避免断电/崩溃损坏数据
 fn atomic_write(path: &Path, bytes: Vec<u8>) -> Result<(), String> {
     if let Some(parent) = path.parent() {

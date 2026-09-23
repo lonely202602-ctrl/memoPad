@@ -42,6 +42,7 @@ export const api = {
   setBlur: (mode: Blur, dark: boolean | null) => invoke<Blur>("set_blur", { mode, dark }),
   setAlwaysOnTop: (on: boolean) => invoke<void>("set_always_on_top", { on }),
   getWallpaper: () => invoke<string | null>("get_wallpaper_data_url"),
+  runUninstaller: () => invoke<string>("run_uninstaller"),
   getAutostart: () => invoke<boolean>("get_autostart"),
   setAutostart: (on: boolean) => invoke<void>("set_autostart", { on }),
 };
