@@ -56,6 +56,9 @@ const WCA_ACCENT_POLICY: u32 = 19;
 const ACCENT_DISABLED: u32 = 0;
 #[cfg(windows)]
 const ACCENT_ENABLE_ACRYLICBLURBEHIND: u32 = 4;
+/// Win11 系统材质层：模糊不随窗口失焦消失，是常态毛玻璃的关键
+#[cfg(windows)]
+const ACCENT_ENABLE_HOSTBACKDROP: u32 = 5;
 
 #[cfg(windows)]
 fn hwnd_raw(window: &tauri::WebviewWindow) -> Option<*mut std::ffi::c_void> {
@@ -66,6 +69,8 @@ fn hwnd_raw(window: &tauri::WebviewWindow) -> Option<*mut std::ffi::c_void> {
 static COMP_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 #[cfg(windows)]
 static LAST_DARK: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0); // 0=跟随系统 1=浅 2=深
+#[cfg(windows)]
+static ACTIVE_ACCENT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0); // 0=无 4/5=组合层模糊
 
 #[cfg(windows)]
 fn dwm_set_u32(hwnd: *mut std::ffi::c_void, attr: u32, value: u32) -> bool {
@@ -131,9 +136,9 @@ fn disable_accent(hwnd: *mut std::ffi::c_void) {
     }
 }
 
-/// 组合层 Acrylic 混色（AABBGGRR）
+/// 组合层模糊混色（AABBGGRR）。state: 4=Acrylic（失焦丢模糊） 5=HostBackdrop（Win11 常驻）
 #[cfg(windows)]
-fn comp_acrylic(window: &tauri::WebviewWindow, dark: Option<bool>) -> bool {
+fn comp_acrylic(window: &tauri::WebviewWindow, dark: Option<bool>, accent_state: u32) -> bool {
     if let Some(hwnd) = hwnd_raw(window) {
         unsafe {
             type SetAccentFn = unsafe extern "system" fn(
@@ -147,7 +152,7 @@ fn comp_acrylic(window: &tauri::WebviewWindow, dark: Option<bool>) -> bool {
             };
             let gradient = ((a as u32) << 24) | ((b as u32) << 16) | ((g as u32) << 8) | (r as u32);
             let policy = raw::AccentPolicy {
-                accent_state: ACCENT_ENABLE_ACRYLICBLURBEHIND,
+                accent_state,
                 accent_flags: 0,
                 gradient_color: gradient,
                 animation_id: 0,
@@ -184,6 +189,12 @@ pub fn clear(window: &tauri::WebviewWindow) {
     }
 }
 
+/// 测试/强制指定实现：MEMOPAD_BLUR_IMPL = host | acrylic4 | transient | mica
+#[cfg(windows)]
+fn forced_impl() -> Option<String> {
+    std::env::var("MEMOPAD_BLUR_IMPL").ok()
+}
+
 /// 应用指定效果，返回实际生效的模式（自动降级）
 #[cfg(windows)]
 pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> Result<String, String> {
@@ -206,24 +217,53 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
                 if dwm_backdrop(hwnd, DWMSBT_TRANSIENTWINDOW) {
                     return Ok("acrylic".into());
                 }
-                if comp_acrylic(window, dark) {
+                if comp_acrylic(window, dark, ACCENT_ENABLE_HOSTBACKDROP) {
                     COMP_ACTIVE.store(true, Relaxed);
+                    ACTIVE_ACCENT.store(ACCENT_ENABLE_HOSTBACKDROP as u8, Relaxed);
+                    return Ok("acrylic".into());
+                }
+                if comp_acrylic(window, dark, ACCENT_ENABLE_ACRYLICBLURBEHIND) {
+                    COMP_ACTIVE.store(true, Relaxed);
+                    ACTIVE_ACCENT.store(ACCENT_ENABLE_ACRYLICBLURBEHIND as u8, Relaxed);
                     return Ok("acrylic".into());
                 }
             }
             "acrylic" => {
                 disable_accent(hwnd);
-                if dwm_backdrop(hwnd, DWMSBT_TRANSIENTWINDOW) {
-                    COMP_ACTIVE.store(false, Relaxed);
-                    return Ok("acrylic".into());
-                }
-                if dwm_backdrop(hwnd, DWMSBT_MAINWINDOW) {
-                    COMP_ACTIVE.store(false, Relaxed);
-                    return Ok("mica".into());
-                }
-                if comp_acrylic(window, dark) {
+                let force = forced_impl();
+                // 1) 组合层 Acrylic：.blur 最通透最接近用户想要的观感；
+                //    Win11 22H2+ 失焦会丢模糊，由 reapply_acrylic 延迟补回
+                if force.as_deref() != Some("host")
+                    && force.as_deref() != Some("transient")
+                    && force.as_deref() != Some("stack")
+                    && comp_acrylic(window, dark, ACCENT_ENABLE_ACRYLICBLURBEHIND)
+                {
                     COMP_ACTIVE.store(true, Relaxed);
+                    ACTIVE_ACCENT.store(ACCENT_ENABLE_ACRYLICBLURBEHIND as u8, Relaxed);
                     return Ok("acrylic".into());
+                }
+                // 2) Win11 HostBackdrop：本机实测只出透明无材质，保留作降级
+                if force.as_deref() != Some("acrylic4")
+                    && force.as_deref() != Some("transient")
+                    && force.as_deref() != Some("stack")
+                    && comp_acrylic(window, dark, ACCENT_ENABLE_HOSTBACKDROP)
+                {
+                    COMP_ACTIVE.store(true, Relaxed);
+                    ACTIVE_ACCENT.store(ACCENT_ENABLE_HOSTBACKDROP as u8, Relaxed);
+                    return Ok("acrylic".into());
+                }
+                // 3) DWM 系统 Acrylic backdrop：常驻但偏暗
+                if force.as_deref() == Some("transient")
+                    || force.as_deref() == Some("stack")
+                    || force.is_none()
+                {
+                    COMP_ACTIVE.store(false, Relaxed);
+                    if dwm_backdrop(hwnd, DWMSBT_TRANSIENTWINDOW) {
+                        return Ok("acrylic".into());
+                    }
+                    if dwm_backdrop(hwnd, DWMSBT_MAINWINDOW) {
+                        return Ok("mica".into());
+                    }
                 }
             }
             _ => {
@@ -237,9 +277,24 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
     Ok("none".into())
 }
 
-/// Win11 22H2+ 的组合层 Acrylic 失焦会被系统撤掉模糊，焦点变化时重新施加以维持常态毛玻璃
+/// Win11 22H2+ 的组合层 Acrylic 失焦会被系统撤掉模糊。
+/// 失焦后系统可能在事件之后才撤销，所以除了立即补，还延迟补一次。
 #[cfg(windows)]
 pub fn reapply_acrylic(window: &tauri::WebviewWindow) {
+    reapply_inner(window);
+    let delay: u64 = std::env::var("MEMOPAD_REAPPLY_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(150);
+    let w = window.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(delay));
+        reapply_inner(&w);
+    });
+}
+
+#[cfg(windows)]
+fn reapply_inner(window: &tauri::WebviewWindow) {
     use std::sync::atomic::Ordering::Relaxed;
     if !COMP_ACTIVE.load(Relaxed) {
         return;
@@ -249,10 +304,14 @@ pub fn reapply_acrylic(window: &tauri::WebviewWindow) {
         2 => Some(true),
         _ => None,
     };
+    let state = ACTIVE_ACCENT.load(Relaxed);
+    if state != ACCENT_ENABLE_ACRYLICBLURBEHIND as u8 && state != ACCENT_ENABLE_HOSTBACKDROP as u8 {
+        return;
+    }
     if let Some(hwnd) = hwnd_raw(window) {
         disable_accent(hwnd);
     }
-    comp_acrylic(window, dark);
+    comp_acrylic(window, dark, state as u32);
 }
 
 #[cfg(not(windows))]
