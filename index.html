@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>memoPad</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="base" data-tauri-drag-region>
+      <header class="titlebar" data-tauri-drag-region>
+        <div class="brand" data-tauri-drag-region>
+          <span class="brand-dot"></span><span data-tauri-drag-region>memoPad</span>
+        </div>
+        <div class="win-actions">
+          <button id="btn-theme" class="icon-btn" title="切换主题（跟随系统 / 浅色 / 深色）">◐</button>
+          <button id="btn-settings" class="icon-btn" title="设置">⚙</button>
+          <button id="btn-hide" class="icon-btn" title="隐藏到托盘">—</button>
+        </div>
+      </header>
+
+      <nav class="tabs-row">
+        <div class="tabs">
+          <button class="tab active" data-view="daily">每日</button>
+          <button class="tab" data-view="longterm">长期</button>
+        </div>
+      </nav>
+
+      <div class="date-row" id="date-row" data-tauri-drag-region>
+        <button id="date-prev" class="nav-btn" title="前一天">‹</button>
+        <button id="date-label" class="date-label" data-tauri-drag-region>今天</button>
+        <button id="date-next" class="nav-btn" title="后一天">›</button>
+      </div>
+
+      <main class="list" id="list" data-tauri-drag-region></main>
+
+      <div class="carry-row hidden" id="carry-row">
+        <button id="carry-btn" class="carry-btn"></button>
+      </div>
+
+      <footer class="composer">
+        <input id="new-input" type="text" placeholder="添加待办，回车确认…" maxlength="200" autocomplete="off" />
+        <button id="add-btn" class="add-btn" title="添加">＋</button>
+      </footer>
+
+      <div class="grip" id="grip" title="拖动调整大小"></div>
+
+      <div class="drawer hidden" id="drawer">
+        <div class="drawer-head">
+          <span>设置</span>
+          <button id="drawer-close" class="icon-btn" title="关闭">✕</button>
+        </div>
+        <div class="drawer-body">
+          <div class="setting">
+            <label>外观主题</label>
+            <div class="seg" id="theme-seg">
+              <button data-theme-opt="system">跟随系统</button>
+              <button data-theme-opt="light">浅色</button>
+              <button data-theme-opt="dark">深色</button>
+            </div>
+          </div>
+          <div class="setting">
+            <label>磨砂效果</label>
+            <div class="seg" id="blur-seg">
+              <button data-blur-opt="mica">Mica</button>
+              <button data-blur-opt="acrylic">Acrylic</button>
+              <button data-blur-opt="none">关闭</button>
+            </div>
+          </div>
+          <div class="setting row">
+            <label>窗口置顶</label>
+            <button class="switch" id="top-switch" role="switch" title="便签是否始终保持在其他窗口之上"></button>
+          </div>
+          <div class="setting row">
+            <label>开机自启</label>
+            <button class="switch" id="autostart-switch" role="switch"></button>
+          </div>
+          <div class="setting">
+            <label>数据存储位置</label>
+            <div class="path-box" id="data-path"></div>
+            <div class="path-actions">
+              <button id="pick-dir" class="mini-btn">更改…</button>
+              <button id="open-dir" class="mini-btn">打开文件夹</button>
+            </div>
+          </div>
+          <div class="about" id="about"></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
