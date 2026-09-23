@@ -19,6 +19,7 @@ export interface Settings {
   dataDir: string;
   theme: Theme;
   blur: Blur;
+  glassAlpha: number | null; // 毛玻璃不透明度 0.1~0.95，null=默认
   alwaysOnTop: boolean;
   windowX: number | null;
   windowY: number | null;

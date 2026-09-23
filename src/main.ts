@@ -12,6 +12,7 @@ let settings: Settings = {
   dataDir: "",
   theme: "system",
   blur: "acrylic",
+  glassAlpha: null,
   alwaysOnTop: true,
   windowX: null,
   windowY: null,
@@ -66,6 +67,7 @@ function effDark(): boolean {
 function applyThemeClass(): void {
   document.body.dataset.theme = settings.theme === "system" ? (systemDark() ? "dark" : "light") : settings.theme;
   document.body.dataset.blur = settings.blur;
+  document.body.style.setProperty("--base-alpha", String(settings.glassAlpha ?? 0.5));
 }
 
 async function refreshBlur(): Promise<void> {
@@ -97,6 +99,12 @@ async function persistSettings(): Promise<void> {
   } catch (e) {
     console.error("保存设置失败", e);
   }
+}
+
+let settingsSaveTimer: ReturnType<typeof setTimeout> | undefined;
+function persistSettingsSoon(): void {
+  clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(() => void persistSettings(), 300);
 }
 
 function saveTodosSoon(): void {
@@ -239,6 +247,9 @@ function renderSettingsState(): void {
     b.classList.toggle("active", b.dataset.blurOpt === settings.blur);
   });
   $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
+  const alpha = settings.glassAlpha ?? 0.5;
+  $<HTMLInputElement>("#glass-alpha").value = String(Math.round(alpha * 100));
+  $("#glass-alpha-val").textContent = `${Math.round(alpha * 100)}%`;
   const pathEl = $("#data-path");
   pathEl.textContent = settings.dataDir;
   pathEl.title = settings.dataDir;
@@ -357,6 +368,13 @@ async function bindEvents(): Promise<void> {
         renderSettingsState();
       });
     });
+  });
+  $<HTMLInputElement>("#glass-alpha").addEventListener("input", () => {
+    const v = Number($<HTMLInputElement>("#glass-alpha").value); // 20~90
+    settings.glassAlpha = v / 100;
+    document.body.style.setProperty("--base-alpha", String(v / 100));
+    $("#glass-alpha-val").textContent = `${v}%`;
+    persistSettingsSoon();
   });
   $("#top-switch").addEventListener("click", () => {
     settings.alwaysOnTop = !settings.alwaysOnTop;

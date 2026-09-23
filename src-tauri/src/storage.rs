@@ -23,6 +23,7 @@ pub struct Settings {
     pub data_dir: String,
     pub theme: String,     // "system" | "light" | "dark"
     pub blur: String,      // "mica" | "acrylic" | "none"
+    pub glass_alpha: Option<f64>, // 毛玻璃不透明度 0.1~0.95，None=默认 0.5
     pub always_on_top: bool,
     pub window_x: Option<i32>,
     pub window_y: Option<i32>,
@@ -36,6 +37,7 @@ impl Default for Settings {
             data_dir: default_data_dir().to_string_lossy().into_owned(),
             theme: "system".into(),
             blur: "acrylic".into(),
+            glass_alpha: None,
             always_on_top: true,
             window_x: None,
             window_y: None,

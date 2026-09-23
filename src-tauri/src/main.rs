@@ -111,9 +111,10 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // 仅在失焦时补模糊：聚焦时系统本来就渲染模糊，不要动它（动了会频闪）
-            if let tauri::WindowEvent::Focused(false) = event {
-                if window.label() == "main" {
+            // 仅在（真实）失焦时补模糊：聚焦时系统本来就渲染模糊，不要动它（动了会频闪）
+            if let tauri::WindowEvent::Focused(focused) = event {
+                backdrop::set_focused(*focused);
+                if !focused && window.label() == "main" {
                     if let Some(w) = window.get_webview_window("main") {
                         let s = storage::load_settings();
                         if s.blur == "acrylic" {

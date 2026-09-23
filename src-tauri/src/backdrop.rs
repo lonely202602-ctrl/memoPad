@@ -71,6 +71,17 @@ static COMP_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBoo
 static LAST_DARK: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0); // 0=跟随系统 1=浅 2=深
 #[cfg(windows)]
 static ACTIVE_ACCENT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0); // 0=无 4/5=组合层模糊
+#[cfg(windows)]
+static WIN_FOCUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// 记录真实焦点状态；点击便签时 WebView2 会先发假失焦再聚焦，
+/// 延迟补拍执行时若已聚焦则跳过，避免在聚焦态改写模糊造成频闪
+#[cfg(windows)]
+pub fn set_focused(focused: bool) {
+    WIN_FOCUSED.store(focused, std::sync::atomic::Ordering::Relaxed);
+}
+#[cfg(not(windows))]
+pub fn set_focused(_focused: bool) {}
 
 #[cfg(windows)]
 fn dwm_set_u32(hwnd: *mut std::ffi::c_void, attr: u32, value: u32) -> bool {
@@ -296,6 +307,10 @@ pub fn reapply_acrylic(window: &tauri::WebviewWindow) {
 #[cfg(windows)]
 fn reapply_inner(window: &tauri::WebviewWindow) {
     use std::sync::atomic::Ordering::Relaxed;
+    // 延迟期间窗口若已（重新）聚焦，聚焦态由系统自己渲染，改写会闪，直接跳过
+    if WIN_FOCUSED.load(Relaxed) {
+        return;
+    }
     if !COMP_ACTIVE.load(Relaxed) {
         return;
     }

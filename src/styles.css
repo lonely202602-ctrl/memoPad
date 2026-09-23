@@ -1,7 +1,8 @@
 /* ===== 主题变量 ===== */
 :root,
 body[data-theme="light"] {
-  --base-bg: rgba(250, 250, 252, 0.5);
+  --base-alpha: 0.5;
+  --base-bg: rgba(250, 250, 252, var(--base-alpha));
   --base-border: rgba(255, 255, 255, 0.7);
   --strip-bg: rgba(255, 255, 255, 0.4);
   --strip-border: rgba(255, 255, 255, 0.55);
@@ -19,7 +20,8 @@ body[data-theme="light"] {
 }
 
 body[data-theme="dark"] {
-  --base-bg: rgba(20, 20, 26, 0.48);
+  --base-alpha: 0.5;
+  --base-bg: rgba(20, 20, 26, var(--base-alpha));
   --base-border: rgba(255, 255, 255, 0.12);
   --strip-bg: rgba(255, 255, 255, 0.07);
   --strip-border: rgba(255, 255, 255, 0.1);
@@ -614,6 +616,20 @@ body {
 .mini-btn:hover {
   background: var(--hover-bg);
   border-color: var(--accent);
+}
+
+/* ===== 滑杆 ===== */
+input[type="range"] {
+  width: 100%;
+  height: 20px;
+  accent-color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+}
+
+.seg-val {
+  color: var(--accent-deep);
+  font-weight: 600;
 }
 
 .mini-btn.danger {
