@@ -890,25 +890,11 @@ textarea.text-input {
 }
 
 .ob-logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 14px;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #ffd75e, #f0a52a);
-  box-shadow: 0 4px 14px rgba(217, 144, 31, 0.45);
-  position: relative;
-}
-
-.ob-logo::after {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: 25px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 -10px 0 rgba(255, 255, 255, 0.9), 0 10px 0 rgba(255, 255, 255, 0.9);
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 10px;
+  background: url("/logo.png") center / contain no-repeat;
+  transform: translateZ(0);
 }
 
 .ob-card h1 {
