@@ -103,6 +103,23 @@ body {
   overflow: hidden;
 }
 
+/* 主题切换过渡：大面积表面颜色渐变（hover 等局部反馈沿用各自更快的过渡） */
+.base,
+.item,
+.list,
+.drawer,
+.wallpaper {
+  transition: background-color 0.3s ease;
+}
+
+body {
+  transition: color 0.3s ease;
+}
+
+.item {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
 /* 自绘毛玻璃层：按窗口屏幕坐标对齐的模糊壁纸，恒定渲染、与焦点无关 */
 .wallpaper {
   position: absolute;
@@ -378,6 +395,7 @@ body[data-theme="dark"] .progress-text b {
 .list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 6px 12px;
   scrollbar-width: thin;
   scrollbar-color: var(--text-dim) transparent;

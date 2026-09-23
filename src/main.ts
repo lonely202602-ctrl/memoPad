@@ -156,7 +156,10 @@ async function alignWallpaper(): Promise<void> {
   }
 }
 
+let themeBusy = false;
 async function setThemeMode(mode: Theme): Promise<void> {
+  if (themeBusy || settings.theme === mode) return; // 忙时/同模式忽略，防止连点卡顿
+  themeBusy = true;
   settings.theme = mode;
   applyThemeClass();
   try {
@@ -167,6 +170,7 @@ async function setThemeMode(mode: Theme): Promise<void> {
   await refreshBlur();
   await persistSettings();
   renderSettingsState();
+  themeBusy = false;
 }
 
 // ---- 日历 ----
@@ -556,9 +560,8 @@ async function bindEvents(): Promise<void> {
   });
   $("#drawer-close").addEventListener("click", () => drawer.classList.add("hidden"));
   $("#btn-theme").addEventListener("click", () => {
-    const order: Theme[] = ["system", "light", "dark"];
-    const next = order[(order.indexOf(settings.theme) + 1) % order.length];
-    void setThemeMode(next);
+    // 直接在明暗间切换，保证每次点击都有可见变化；「跟随系统」在设置面板选择
+    void setThemeMode(effDark() ? "light" : "dark");
   });
 
   // 设置面板
