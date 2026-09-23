@@ -8,6 +8,7 @@
   </head>
   <body>
     <div class="base" data-tauri-drag-region>
+      <div class="wallpaper" id="wallpaper" aria-hidden="true"></div>
       <header class="titlebar" data-tauri-drag-region>
         <div class="brand" data-tauri-drag-region>
           <span class="brand-dot"></span><span data-tauri-drag-region>memoPad</span>
@@ -62,8 +63,8 @@
           <div class="setting">
             <label>磨砂效果</label>
             <div class="seg" id="blur-seg">
+              <button data-blur-opt="acrylic">毛玻璃</button>
               <button data-blur-opt="mica">Mica</button>
-              <button data-blur-opt="acrylic">Acrylic</button>
               <button data-blur-opt="none">关闭</button>
             </div>
           </div>

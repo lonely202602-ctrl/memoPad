@@ -95,11 +95,28 @@ body {
 
 .base {
   position: relative;
+  z-index: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--base-bg);
   overflow: hidden;
+}
+
+/* 自绘毛玻璃层：按窗口屏幕坐标对齐的模糊壁纸，恒定渲染、与焦点无关 */
+.wallpaper {
+  position: absolute;
+  inset: -90px;
+  z-index: -1;
+  background-repeat: no-repeat;
+  filter: blur(28px) saturate(1.25);
+  transform: translateZ(0);
+  pointer-events: none;
+}
+
+body[data-blur="mica"] .wallpaper,
+body[data-blur="none"] .wallpaper {
+  display: none;
 }
 
 /* ===== 标题栏（拖动区）===== */

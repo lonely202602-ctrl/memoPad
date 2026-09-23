@@ -34,8 +34,10 @@ const carryRow = $("#carry-row");
 const carryBtn = $("#carry-btn");
 const drawer = $("#drawer");
 const todoDrawer = $("#todo-drawer");
+const wallpaperEl = $("#wallpaper");
 
 let editing: Todo | null = null;
+let wallpaperUrl: string | null = null;
 
 // ---- 日期工具 ----
 function pad(n: number): string {
@@ -76,6 +78,39 @@ async function refreshBlur(): Promise<void> {
     settings.blur = applied;
     applyThemeClass();
     await persistSettings();
+  }
+  await updateWallpaperLayer();
+}
+
+// ---- 自绘毛玻璃（壁纸模糊层）----
+async function ensureWallpaper(): Promise<void> {
+  if (wallpaperUrl !== null) return;
+  try {
+    wallpaperUrl = await api.getWallpaper();
+  } catch {
+    wallpaperUrl = null;
+  }
+}
+
+function updateWallpaperLayer(): void {
+  if (settings.blur !== "acrylic" || !wallpaperUrl) {
+    wallpaperEl.style.display = "none";
+    return;
+  }
+  wallpaperEl.style.display = "block";
+  wallpaperEl.style.backgroundImage = `url("${wallpaperUrl}")`;
+  void alignWallpaper();
+}
+
+// 壁纸按窗口在屏幕上的逻辑坐标反向对齐，挪动便签时模糊背景保持贴合
+async function alignWallpaper(): Promise<void> {
+  if (settings.blur !== "acrylic") return;
+  try {
+    const [pos, sf] = await Promise.all([win.outerPosition(), win.scaleFactor()]);
+    wallpaperEl.style.backgroundSize = `${window.screen.width}px ${window.screen.height}px`;
+    wallpaperEl.style.backgroundPosition = `${-pos.x / sf}px ${-pos.y / sf}px`;
+  } catch {
+    /* ignore */
   }
 }
 
@@ -363,10 +398,12 @@ async function bindEvents(): Promise<void> {
     b.addEventListener("click", () => {
       settings.blur = b.dataset.blurOpt as Blur;
       applyThemeClass();
-      void refreshBlur().then(() => {
+      void (async () => {
+        if (settings.blur === "acrylic") await ensureWallpaper();
+        await refreshBlur();
         persistSettings();
         renderSettingsState();
-      });
+      })();
     });
   });
   $<HTMLInputElement>("#glass-alpha").addEventListener("input", () => {
@@ -445,13 +482,16 @@ async function bindEvents(): Promise<void> {
     void win.startResizeDragging("SouthEast");
   });
 
-  // 窗口移动后保存位置（防抖）
+  // 窗口移动后保存位置（防抖）+ 壁纸层重新对齐
+  let alignTimer: ReturnType<typeof setTimeout> | undefined;
   let lastX: number | null = null;
   let lastY: number | null = null;
   await win.onMoved(({ payload }) => {
     if (payload.x === lastX && payload.y === lastY) return;
     lastX = payload.x;
     lastY = payload.y;
+    clearTimeout(alignTimer);
+    alignTimer = setTimeout(() => void alignWallpaper(), 40);
     clearTimeout(posSaveTimer);
     posSaveTimer = setTimeout(saveWindowPos, 600);
   });
@@ -472,6 +512,10 @@ async function boot(): Promise<void> {
   renderSettingsState();
   await bindEvents();
   render();
+  if (settings.blur === "acrylic") {
+    await ensureWallpaper();
+  }
+  updateWallpaperLayer();
   api.getVersion().then((v) => {
     $("#about").textContent = `memoPad v${v}`;
   });

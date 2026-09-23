@@ -1,7 +1,13 @@
-use crate::{backdrop, storage};
+use crate::{backdrop, storage, wallpaper};
 use tauri::AppHandle;
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
+
+/// 当前桌面壁纸（data URL），供前端绘制常驻毛玻璃
+#[tauri::command]
+pub fn get_wallpaper_data_url() -> Option<String> {
+    wallpaper::wallpaper_data_url()
+}
 
 #[tauri::command]
 pub fn get_version() -> String {

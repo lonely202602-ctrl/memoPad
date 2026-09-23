@@ -3,6 +3,7 @@
 mod backdrop;
 mod commands;
 mod storage;
+mod wallpaper;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -48,8 +49,7 @@ fn ensure_single_instance() {
 fn main() {
     ensure_single_instance();
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_autostart::init(
+        .plugin(tauri_plugin_dialog::init())        .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
@@ -66,6 +66,7 @@ fn main() {
             commands::set_always_on_top,
             commands::get_autostart,
             commands::set_autostart,
+            commands::get_wallpaper_data_url,
         ])
         .setup(|app| {
             let settings = storage::load_settings();
@@ -109,20 +110,6 @@ fn main() {
                 .build(app)?;
 
             Ok(())
-        })
-        .on_window_event(|window, event| {
-            // 仅在（真实）失焦时补模糊：聚焦时系统本来就渲染模糊，不要动它（动了会频闪）
-            if let tauri::WindowEvent::Focused(focused) = event {
-                backdrop::set_focused(*focused);
-                if !focused && window.label() == "main" {
-                    if let Some(w) = window.get_webview_window("main") {
-                        let s = storage::load_settings();
-                        if s.blur == "acrylic" {
-                            backdrop::reapply_acrylic(&w);
-                        }
-                    }
-                }
-            }
         })
         .run(tauri::generate_context!())
         .expect("error while running memopad");
