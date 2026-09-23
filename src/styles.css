@@ -402,6 +402,9 @@ body[data-theme="dark"] .progress-text b {
   background: var(--strip-bg);
   border: 1px solid var(--strip-border);
   box-shadow: var(--strip-shadow);
+}
+
+.item.enter {
   animation: slide-in 0.18s ease;
 }
 
@@ -422,7 +425,7 @@ body[data-theme="dark"] .progress-text b {
   height: 20px;
   border-radius: 50%;
   border: 1.5px solid var(--text-dim);
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  transition: background 0.25s ease, border-color 0.25s ease, transform 0.12s;
 }
 
 .check:hover {
@@ -460,11 +463,14 @@ body[data-theme="dark"] .progress-text b {
   word-break: break-word;
   cursor: pointer;
   padding: 1px 0;
+  text-decoration: line-through;
+  text-decoration-color: transparent;
+  transition: color 0.25s ease, text-decoration-color 0.25s ease;
 }
 
 .item.done .content {
-  text-decoration: line-through;
   color: var(--text-dim);
+  text-decoration-color: var(--text-dim);
 }
 
 .content-editing {

@@ -1,6 +1,6 @@
 [package]
 name = "memopad"
-version = "0.2.1"
+version = "0.2.2"
 description = "memoPad - 桌面磨砂玻璃便签待办"
 edition = "2021"
 rust-version = "1.77"

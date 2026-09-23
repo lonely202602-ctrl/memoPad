@@ -41,6 +41,42 @@ let editing: Todo | null = null;
 let wallpaperUrl: string | null = null;
 let calY = 0;
 let calM = 0; // 0-based month
+let knownIds = new Set<string>();
+
+const REDUCE_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// ---- FLIP 过渡：仅 transform 合成器动画，不触发重排 ----
+function captureRects(): Map<string, DOMRect> {
+  const map = new Map<string, DOMRect>();
+  if (REDUCE_MOTION.matches) return map;
+  listEl.querySelectorAll<HTMLElement>("[data-flip-key]").forEach((el) => {
+    map.set(el.dataset.flipKey as string, el.getBoundingClientRect());
+  });
+  return map;
+}
+
+function playFlip(before: Map<string, DOMRect>): void {
+  if (REDUCE_MOTION.matches || before.size === 0) return;
+  listEl.querySelectorAll<HTMLElement>("[data-flip-key]").forEach((el) => {
+    const key = el.dataset.flipKey as string;
+    const prev = before.get(key);
+    if (!prev) return;
+    const now = el.getBoundingClientRect();
+    const dx = prev.left - now.left;
+    const dy = prev.top - now.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    el.animate(
+      [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+      { duration: 280, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    );
+  });
+}
+
+function renderFlip(): void {
+  const before = captureRects();
+  render();
+  playFlip(before);
+}
 
 // ---- 日期工具 ----
 function pad(n: number): string {
@@ -247,20 +283,66 @@ function toggleTodo(t: Todo): void {
   t.done = !t.done;
   t.doneAt = t.done ? Date.now() : null;
   saveTodosSoon();
-  render();
+  renderFlip();
 }
 
 function deleteTodo(t: Todo): void {
-  todos = todos.filter((x) => x.id !== t.id);
-  saveTodosSoon();
-  render();
+  const el = listEl.querySelector<HTMLElement>(`.item[data-id="${t.id}"]`);
+  if (!el || REDUCE_MOTION.matches) {
+    todos = todos.filter((x) => x.id !== t.id);
+    saveTodosSoon();
+    render();
+    return;
+  }
+  // 退出动画：右滑淡出 + 高度塌陷（一次性小元素动画），剩余项随后滑升补位
+  el.style.overflow = "hidden";
+  el.style.pointerEvents = "none";
+  const anim = el.animate(
+    [
+      { opacity: 1, height: `${el.offsetHeight}px`, marginBottom: "7px", transform: "none" },
+      { opacity: 0, height: "0px", marginBottom: "0px", transform: "translateX(28px)" },
+    ],
+    { duration: 190, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
+  );
+  anim.onfinish = () => {
+    todos = todos.filter((x) => x.id !== t.id);
+    saveTodosSoon();
+    renderFlip();
+  };
 }
 
 function clearDone(): void {
-  const scope = new Set(currentScope().filter((t) => t.done).map((t) => t.id));
-  todos = todos.filter((t) => !scope.has(t.id));
-  saveTodosSoon();
-  render();
+  const scope = currentScope().filter((t) => t.done);
+  if (scope.length === 0) return;
+  const ids = new Set(scope.map((t) => t.id));
+  const els = [...listEl.querySelectorAll<HTMLElement>(".item")].filter((el) =>
+    ids.has(el.dataset.id ?? "")
+  );
+  if (REDUCE_MOTION.matches || els.length === 0) {
+    todos = todos.filter((t) => !ids.has(t.id));
+    saveTodosSoon();
+    render();
+    return;
+  }
+  els.forEach((el, i) => {
+    el.style.overflow = "hidden";
+    el.style.pointerEvents = "none";
+    el.animate(
+      [
+        { opacity: 1, height: `${el.offsetHeight}px`, marginBottom: "7px", transform: "none" },
+        { opacity: 0, height: "0px", marginBottom: "0px", transform: "translateX(28px)" },
+      ],
+      { duration: 170, delay: i * 40, easing: "ease-out", fill: "forwards" }
+    );
+  });
+  setTimeout(
+    () => {
+      todos = todos.filter((t) => !ids.has(t.id));
+      saveTodosSoon();
+      renderFlip();
+    },
+    170 + (els.length - 1) * 40 + 40
+  );
 }
 
 function carryOverToToday(): void {
@@ -286,8 +368,8 @@ function esc(s: string): string {
   );
 }
 
-function itemHtml(t: Todo): string {
-  return `<div class="item${t.done ? " done" : ""}" data-id="${t.id}">
+function itemHtml(t: Todo, enter: boolean): string {
+  return `<div class="item${t.done ? " done" : ""}${enter ? " enter" : ""}" data-id="${t.id}" data-flip-key="${t.id}">
     <button class="check" data-act="toggle" title="${t.done ? "标记为未完成" : "确认完成"}"></button>
     <span class="content" data-act="open" title="点击编辑详情">${esc(t.content)}</span>
     <button class="del" data-act="del" title="删除">✕</button>
@@ -319,10 +401,10 @@ function render(): void {
   }
 
   let html = "";
-  for (const t of pending) html += itemHtml(t);
+  for (const t of pending) html += itemHtml(t, !knownIds.has(t.id));
   if (done.length > 0) {
-    html += `<div class="done-head"><span>已完成 · ${done.length}</span><button class="clear-done" data-act="clear">清除</button></div>`;
-    for (const t of done) html += itemHtml(t);
+    html += `<div class="done-head" data-flip-key="done-head"><span>已完成 · ${done.length}</span><button class="clear-done" data-act="clear">清除</button></div>`;
+    for (const t of done) html += itemHtml(t, !knownIds.has(t.id));
   }
   if (scope.length === 0) {
     html += `<div class="empty">${
@@ -334,6 +416,7 @@ function render(): void {
     }</div>`;
   }
   listEl.innerHTML = html;
+  knownIds = new Set(scope.map((t) => t.id));
 
   const pastPending = view === "daily" && !isToday ? pending.length : 0;
   carryRow.classList.toggle("hidden", pastPending === 0);
