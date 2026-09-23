@@ -13,6 +13,7 @@ let settings: Settings = {
   theme: "system",
   blur: "acrylic",
   glassAlpha: null,
+  onboarded: false,
   alwaysOnTop: true,
   windowX: null,
   windowY: null,
@@ -36,9 +37,11 @@ const drawer = $("#drawer");
 const todoDrawer = $("#todo-drawer");
 const wallpaperEl = $("#wallpaper");
 const calendarEl = $("#calendar");
+const onboardingEl = $("#onboarding");
 
 let editing: Todo | null = null;
 let wallpaperUrl: string | null = null;
+let obPendingDir: string | null = null;
 let calY = 0;
 let calM = 0; // 0-based month
 let knownIds = new Set<string>();
@@ -650,6 +653,29 @@ async function bindEvents(): Promise<void> {
     });
   });
 
+  // 首次启动向导
+  $("#ob-pick").addEventListener("click", () => {
+    api.pickDataFolder()
+      .then((dir) => {
+        if (!dir) return;
+        obPendingDir = dir;
+        $("#ob-path").textContent = dir;
+      })
+      .catch(() => {});
+  });
+  $("#ob-start").addEventListener("click", () => {
+    void (async () => {
+      if (obPendingDir && obPendingDir !== settings.dataDir) {
+        settings.dataDir = obPendingDir;
+        todos = await api.changeDataDir(obPendingDir);
+        render();
+      }
+      settings.onboarded = true;
+      await persistSettings();
+      onboardingEl.classList.add("hidden");
+    })();
+  });
+
   // 调整大小
   $("#grip").addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -690,6 +716,10 @@ async function boot(): Promise<void> {
     await ensureWallpaper();
   }
   updateWallpaperLayer();
+  if (!settings.onboarded) {
+    $("#ob-path").textContent = settings.dataDir;
+    onboardingEl.classList.remove("hidden");
+  }
   api.getVersion().then((v) => {
     $("#about").textContent = `memoPad v${v}`;
   });

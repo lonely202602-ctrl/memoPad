@@ -23,7 +23,8 @@ pub struct Settings {
     pub data_dir: String,
     pub theme: String,     // "system" | "light" | "dark"
     pub blur: String,      // "mica" | "acrylic" | "none"
-    pub glass_alpha: Option<f64>, // 毛玻璃不透明度 0.1~0.95，None=默认 0.5
+    pub glass_alpha: Option<f64>, // 毛玻璃不透明度 0.1~0.95，None=默认 0.4
+    pub onboarded: bool,   // 首次启动向导是否已完成
     pub always_on_top: bool,
     pub window_x: Option<i32>,
     pub window_y: Option<i32>,
@@ -38,6 +39,7 @@ impl Default for Settings {
             theme: "system".into(),
             blur: "acrylic".into(),
             glass_alpha: None,
+            onboarded: false,
             always_on_top: true,
             window_x: None,
             window_y: None,

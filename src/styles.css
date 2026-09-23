@@ -21,6 +21,7 @@ body[data-theme="light"] {
 
 body[data-theme="dark"] {
   --base-alpha: 0.5;
+  --wall-brightness: 0.9;
   --base-bg: rgba(20, 20, 26, var(--base-alpha));
   --base-border: rgba(255, 255, 255, 0.12);
   --strip-bg: rgba(255, 255, 255, 0.07);
@@ -126,9 +127,13 @@ body {
   inset: -90px;
   z-index: -1;
   background-repeat: no-repeat;
-  filter: blur(28px) saturate(1.25);
+  filter: blur(34px) saturate(1.3) brightness(var(--wall-brightness, 1));
   transform: translateZ(0);
   pointer-events: none;
+}
+
+body[data-theme="light"] {
+  --wall-brightness: 1.25;
 }
 
 body[data-blur="mica"] .wallpaper,
@@ -865,4 +870,100 @@ textarea.text-input {
   color: var(--text-dim);
   opacity: 0.7;
   padding-top: 6px;
+}
+
+/* ===== 首次启动向导 ===== */
+.onboarding {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--drawer-bg);
+  animation: fade-in 0.2s ease;
+}
+
+.ob-card {
+  width: 84%;
+  text-align: center;
+}
+
+.ob-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffd75e, #f0a52a);
+  box-shadow: 0 4px 14px rgba(217, 144, 31, 0.45);
+  position: relative;
+}
+
+.ob-logo::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 25px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 -10px 0 rgba(255, 255, 255, 0.9), 0 10px 0 rgba(255, 255, 255, 0.9);
+}
+
+.ob-card h1 {
+  font-size: 17px;
+  margin: 0 0 6px;
+}
+
+.ob-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 18px;
+}
+
+.ob-section {
+  text-align: left;
+  background: var(--strip-bg);
+  border: 1px solid var(--strip-border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.ob-section label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.ob-section .path-box {
+  margin-bottom: 8px;
+}
+
+.ob-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 8px 0 0;
+}
+
+.ob-start {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(145deg, #f2b24e, #dd9022);
+  box-shadow: 0 3px 10px rgba(217, 144, 31, 0.4);
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.ob-start:hover {
+  filter: brightness(1.06);
+}
+
+.ob-start:active {
+  transform: scale(0.98);
 }

@@ -1,13 +1,17 @@
-# memoPad — 桌面磨砂玻璃便签待办
+<div align="center">
+  <img src="assets/logo.png" width="120" alt="memoPad logo"/>
+  <h3>memoPad — 桌面磨砂玻璃便签待办</h3>
+  <p>由 <a href="https://github.com/lonely202602-ctrl">LonelyCat</a> 打造的原生 Windows 桌面便签（Tauri 2）</p>
+</div>
 
-一个原生 Windows 桌面便签应用（Tauri 2 构建，**不是网页应用**）：常驻桌面的磨砂玻璃便签纸，支持每日待办、长期待办、三种主题、自定义数据存储位置。
+原生 Windows 桌面便签应用（Tauri 2 构建，**不是网页应用**）：常驻桌面的磨砂玻璃便签纸，支持每日待办、长期待办、日历快速选择、任务进度、三种主题、自定义数据存储位置。
 
 ## 下载安装
 
 | 文件 | 说明 |
 |------|------|
-| [memoPad_0.2.3_x64-setup.exe · ~1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.2.3/memoPad_0.2.3_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
-| [memoPad_0.2.3_x64_portable.exe · ~4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.2.3/memoPad_0.2.3_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
+| [memoPad_0.3.0_x64-setup.exe · ~1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.3.0/memoPad_0.3.0_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
+| [memoPad_0.3.0_x64_portable.exe · ~4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.3.0/memoPad_0.3.0_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
 
 更多版本请见 [Releases](https://github.com/lonely202602-ctrl/memoPad/releases) 页面。
 
@@ -31,7 +35,7 @@ npm run tauri build  # 发布构建（NSIS 安装包 + 独立 exe）
 ```
 
 构建产物：
-- 安装包：`src-tauri/target/release/bundle/nsis/memoPad_0.2.3_x64-setup.exe`
+- 安装包：`src-tauri/target/release/bundle/nsis/memoPad_0.3.0_x64-setup.exe`
 - 独立程序：`src-tauri/target/release/memoPad.exe`（单文件可直接运行）
 
 ## 安装 / 卸载

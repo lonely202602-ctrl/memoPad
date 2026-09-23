@@ -1,0 +1,40 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="memoPad by LonelyCat">
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD75E"/>
+      <stop offset="1" stop-color="#F0A52A"/>
+    </linearGradient>
+    <linearGradient id="ear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F5B93E"/>
+      <stop offset="1" stop-color="#E09A1F"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 耳朵 -->
+  <polygon points="260,150 500,150 330,15" fill="url(#ear)"/>
+  <polygon points="300,140 460,140 352,50" fill="#C9801E"/>
+  <polygon points="524,150 764,150 694,15" fill="url(#ear)"/>
+  <polygon points="564,140 724,140 672,50" fill="#C9801E"/>
+
+  <!-- 脸：圆角便签 -->
+  <rect x="90" y="120" width="844" height="844" rx="140" fill="url(#fur)"/>
+  <path d="M 90 260 Q 512 140 934 260 L 934 120 L 90 120 Z" fill="url(#sheen)"/>
+
+  <!-- 眯眯眼 -->
+  <path d="M 300 468 Q 372 398 444 468" stroke="#5C3A00" stroke-width="34" stroke-linecap="round" fill="none"/>
+  <path d="M 580 468 Q 652 398 724 468" stroke="#5C3A00" stroke-width="34" stroke-linecap="round" fill="none"/>
+
+  <!-- 鼻子和嘴 -->
+  <path d="M 466 588 L 558 588 Q 582 588 566 612 L 534 660 Q 512 684 490 660 L 458 612 Q 442 588 466 588 Z" fill="#5C3A00"/>
+  <path d="M 512 655 Q 474 706 452 668" stroke="#5C3A00" stroke-width="26" stroke-linecap="round" fill="none"/>
+  <path d="M 512 655 Q 550 706 572 668" stroke="#5C3A00" stroke-width="26" stroke-linecap="round" fill="none"/>
+
+  <!-- 待办线条 -->
+  <rect x="300" y="742" width="424" height="50" rx="25" fill="#FFFFFF" opacity="0.92"/>
+  <rect x="300" y="826" width="320" height="50" rx="25" fill="#FFFFFF" opacity="0.89"/>
+  <rect x="300" y="910" width="372" height="50" rx="25" fill="#FFFFFF" opacity="0.8"/>
+</svg>

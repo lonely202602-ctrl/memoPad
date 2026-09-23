@@ -49,12 +49,13 @@ fn round_window(window: &tauri::WebviewWindow) {
 }
 
 /// 跟随应用主题的系统描边与暗色基调（COLORREF: 0x00BBGGRR）
+/// 描边取接近便签表面的深/浅色，避免出现与主题不符的亮边
 #[cfg(windows)]
 fn apply_theme_chrome(window: &tauri::WebviewWindow, dark: Option<bool>) {
     if let Some(hwnd) = hwnd_raw(window) {
         if let Some(d) = dark {
             dwm_set_u32(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, d as u32);
-            let border: u32 = if d { 0x464040 } else { 0xDED8D8 };
+            let border: u32 = if d { 0x2A2828 } else { 0xEAE6E6 };
             dwm_set_u32(hwnd, DWMWA_BORDER_COLOR, border);
         }
     }
