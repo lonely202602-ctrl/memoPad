@@ -9,6 +9,15 @@ pub fn get_wallpaper_data_url() -> Option<String> {
     wallpaper::wallpaper_data_url()
 }
 
+/// 便携版判定：程序目录里有没有 NSIS 卸载器（决定卸载按钮的形态）
+#[tauri::command]
+pub fn uninstaller_available() -> bool {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("uninstall.exe").exists()))
+        .unwrap_or(false)
+}
+
 /// 运行安装版自带的卸载程序（便携版没有卸载器，返回提示文案）
 #[tauri::command]
 pub fn run_uninstaller() -> Result<String, String> {

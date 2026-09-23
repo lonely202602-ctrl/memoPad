@@ -863,6 +863,13 @@ body[data-theme='dark'] .fancy-thumb {
   border-color: var(--accent);
 }
 
+.mini-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  color: var(--text-dim);
+  border-color: var(--strip-border);
+}
+
 /* ===== 滑杆 ===== */
 input[type="range"] {
   width: 100%;

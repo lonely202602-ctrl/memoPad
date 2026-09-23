@@ -700,6 +700,56 @@ async function bindEvents(): Promise<void> {
   // 顺延
   carryBtn.addEventListener("click", carryOverToToday);
 
+  // 卸载：打开设置时即判定安装版/便携版——便携版按钮直接置灰说明，
+  // 不再走两步确认后才告知；安装版保持两步确认并拉起系统卸载器
+  const ub = $<HTMLButtonElement>("#uninstall-btn");
+  const uh = $("#uninstall-hint");
+  let uninstallArmed = false;
+  let uninstallArmTimer: ReturnType<typeof setTimeout> | undefined;
+  function applyUninstallState(): void {
+    uninstallArmed = false;
+    clearTimeout(uninstallArmTimer);
+    void api
+      .uninstallerAvailable()
+      .then((ok) => {
+        ub.disabled = !ok;
+        if (ok) {
+          ub.textContent = "卸载 memoPad";
+          uh.textContent = "";
+        } else {
+          ub.textContent = "便携版 · 删除文件即可卸载";
+          uh.textContent =
+            "当前以便携方式运行（程序目录里没有卸载器）。卸载 = 直接删除 memoPad 所在文件夹，待办数据不会被动。";
+        }
+      })
+      .catch(() => {});
+  }
+  ub.addEventListener("click", () => {
+    if (!uninstallArmed) {
+      uninstallArmed = true;
+      ub.textContent = "确认卸载？再点一次";
+      uninstallArmTimer = setTimeout(() => {
+        uninstallArmed = false;
+        ub.textContent = "卸载 memoPad";
+      }, 2500);
+      return;
+    }
+    clearTimeout(uninstallArmTimer);
+    ub.disabled = true;
+    ub.textContent = "正在启动卸载器…";
+    api
+      .runUninstaller()
+      .then((msg) => {
+        uh.textContent = msg + "，应用即将退出…";
+      })
+      .catch((e) => {
+        uh.textContent = String(e);
+        uninstallArmed = false;
+        ub.disabled = false;
+        ub.textContent = "卸载 memoPad";
+      });
+  });
+
   // 窗口按钮
   // 标题栏置顶
   $("#btn-pin").addEventListener("click", () => {
@@ -714,6 +764,7 @@ async function bindEvents(): Promise<void> {
     drawer.classList.remove("hidden");
     renderSettingsState();
     drawerScroll.show();
+    void applyUninstallState();
   });
   $("#drawer-close").addEventListener("click", () => drawer.classList.add("hidden"));
   $("#btn-theme").addEventListener("click", () => {
@@ -778,29 +829,6 @@ async function bindEvents(): Promise<void> {
       .catch((e) => console.error("更改存储位置失败", e));
   });
   $("#open-dir").addEventListener("click", () => void api.openDataFolder());
-
-  // 卸载（两步确认：安装版运行卸载器；便携版提示直接删除）
-  const ub = $("#uninstall-btn");
-  const uh = $("#uninstall-hint");
-  let uninstallArmed = false;
-  let uninstallArmTimer: ReturnType<typeof setTimeout> | undefined;
-  ub.addEventListener("click", () => {
-    if (!uninstallArmed) {
-      uninstallArmed = true;
-      ub.textContent = "确认卸载？再点一次";
-      uninstallArmTimer = setTimeout(() => {
-        uninstallArmed = false;
-        ub.textContent = "卸载 memoPad";
-      }, 2500);
-      return;
-    }
-    clearTimeout(uninstallArmTimer);
-    api.runUninstaller().catch((e) => {
-      uh.textContent = String(e);
-      uninstallArmed = false;
-      ub.textContent = "卸载 memoPad";
-    });
-  });
 
   // 待办详情抽屉
   $<HTMLInputElement>("#detail-title").addEventListener("input", () => {

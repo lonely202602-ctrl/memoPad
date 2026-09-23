@@ -68,6 +68,7 @@ fn main() {
             commands::get_autostart,
             commands::set_autostart,
             commands::get_wallpaper_data_url,
+            commands::uninstaller_available,
             commands::run_uninstaller,
         ])
         .setup(|app| {
