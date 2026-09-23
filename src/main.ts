@@ -114,7 +114,7 @@ function applyThemeClass(): void {
   document.body.dataset.theme = settings.theme === "system" ? (systemDark() ? "dark" : "light") : settings.theme;
   document.body.dataset.blur = settings.blur;
   // 关闭磨砂时保底 90%，保证可读性；其余模式直接使用滑杆值
-  const raw = settings.glassAlpha ?? 0.4;
+  const raw = settings.glassAlpha ?? 0.45;
   const eff = settings.blur === "none" ? Math.max(raw, 0.9) : raw;
   document.body.style.setProperty("--base-alpha", String(eff));
 }
@@ -149,16 +149,20 @@ function updateWallpaperLayer(): void {
   void alignWallpaper();
 }
 
-// 壁纸按窗口在屏幕上的逻辑坐标反向对齐，挪动便签时模糊背景保持贴合
-async function alignWallpaper(): Promise<void> {
+// 壁纸按窗口在屏幕上的逻辑坐标反向对齐，挪动便签时模糊背景保持贴合。
+// 缩放比启动时缓存一次；拖动中的坐标直接取移动事件负载，零 IPC 实时对齐
+let scaleCache = 1;
+function alignWallpaper(x?: number, y?: number): void {
   if (settings.blur !== "acrylic") return;
-  try {
-    const [pos, sf] = await Promise.all([win.outerPosition(), win.scaleFactor()]);
+  const apply = (px: number, py: number) => {
     wallpaperEl.style.backgroundSize = `${window.screen.width}px ${window.screen.height}px`;
-    wallpaperEl.style.backgroundPosition = `${-pos.x / sf}px ${-pos.y / sf}px`;
-  } catch {
-    /* ignore */
+    wallpaperEl.style.backgroundPosition = `${-px / scaleCache}px ${-py / scaleCache}px`;
+  };
+  if (x !== undefined && y !== undefined) {
+    apply(x, y);
+    return;
   }
+  void win.outerPosition().then((p) => apply(p.x, p.y)).catch(() => {});
 }
 
 let themeBusy = false;
@@ -442,7 +446,7 @@ function renderSettingsState(): void {
   $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
   $("#lan-switch").classList.toggle("on", settings.lanView);
   $<HTMLInputElement>("#lan-port").value = String(settings.lanPort ?? 9600);
-  const alpha = settings.glassAlpha ?? 0.4;
+  const alpha = settings.glassAlpha ?? 0.45;
   $<HTMLInputElement>("#glass-alpha").value = String(Math.round(alpha * 100));
   $("#glass-alpha-val").textContent = `${Math.round(alpha * 100)}%`;
   const pathEl = $("#data-path");
@@ -721,7 +725,7 @@ async function bindEvents(): Promise<void> {
     lastX = payload.x;
     lastY = payload.y;
     clearTimeout(alignTimer);
-    alignTimer = setTimeout(() => void alignWallpaper(), 40);
+    alignTimer = setTimeout(() => alignWallpaper(lastX ?? undefined, lastY ?? undefined), 40);
     clearTimeout(posSaveTimer);
     posSaveTimer = setTimeout(saveWindowPos, 600);
   });
@@ -744,6 +748,7 @@ async function boot(): Promise<void> {
   render();
   if (settings.blur === "acrylic") {
     await ensureWallpaper();
+    scaleCache = await win.scaleFactor().catch(() => 1);
   }
   updateWallpaperLayer();
   if (!settings.onboarded) {

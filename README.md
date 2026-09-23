@@ -29,8 +29,8 @@
 
 | 文件 | 说明 |
 |------|------|
-| [memoPad_0.4.0_x64-setup.exe · 1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.4.0/memoPad_0.4.0_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
-| [memoPad_0.4.0_x64_portable.exe · 4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.4.0/memoPad_0.4.0_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
+| [memoPad_0.4.1_x64-setup.exe · 1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.4.1/memoPad_0.4.1_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
+| [memoPad_0.4.1_x64_portable.exe · 4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.4.1/memoPad_0.4.1_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
 
 更多版本请见 [Releases](https://github.com/lonely202602-ctrl/memoPad/releases) 页面。
 
