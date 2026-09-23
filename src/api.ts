@@ -21,6 +21,8 @@ export interface Settings {
   blur: Blur;
   glassAlpha: number | null; // 毛玻璃不透明度 0.1~0.95，null=默认
   onboarded: boolean; // 首次启动向导是否已完成
+  lanView: boolean; // 局域网只读查看
+  lanPort: number | null; // 局域网端口，null=默认 9600
   alwaysOnTop: boolean;
   windowX: number | null;
   windowY: number | null;

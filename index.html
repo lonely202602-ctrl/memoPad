@@ -81,6 +81,15 @@
             <input id="glass-alpha" type="range" min="20" max="90" step="5" value="50" />
           </div>
           <div class="setting row">
+            <label>局域网查看（只读）</label>
+            <button class="switch" id="lan-switch" role="switch"></button>
+          </div>
+          <div class="setting row" id="lan-port-row">
+            <label>端口</label>
+            <input id="lan-port" class="text-input port" type="number" min="1024" max="65535" value="9600" />
+          </div>
+          <p class="ob-hint" id="lan-hint">开启后同一局域网设备可只读查看待办（http://电脑IP:端口）；修改端口需重启应用生效。</p>
+          <div class="setting row">
             <label>窗口置顶</label>
             <button class="switch" id="top-switch" role="switch" title="便签是否始终保持在其他窗口之上"></button>
           </div>
@@ -129,9 +138,18 @@
           <p class="ob-sub">桌面上的一张磨砂玻璃便签 · 待办与备忘</p>
           <div class="ob-section">
             <label>数据存放位置</label>
-            <div class="path-box" id="ob-path"></div>
+            <div class="path-box clickable" id="ob-path"></div>
             <button id="ob-pick" class="mini-btn">更改…</button>
             <p class="ob-hint">之后可随时在「设置」中修改，数据会自动迁移</p>
+          </div>
+          <div class="ob-section">
+            <label>局域网查看（只读）</label>
+            <div class="lan-row">
+              <button class="switch" id="ob-lan-switch" role="switch"></button>
+              <span class="lan-label">端口</span>
+              <input id="ob-lan-port" class="text-input port" type="number" min="1024" max="65535" value="9600" />
+            </div>
+            <p class="ob-hint">开启后，同一局域网的设备可通过 http://电脑IP:端口 只读查看待办。修改端口需重启应用生效。</p>
           </div>
           <button id="ob-start" class="ob-start">开始使用</button>
         </div>

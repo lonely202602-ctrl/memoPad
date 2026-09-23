@@ -14,6 +14,8 @@ let settings: Settings = {
   blur: "acrylic",
   glassAlpha: null,
   onboarded: false,
+  lanView: false,
+  lanPort: null,
   alwaysOnTop: true,
   windowX: null,
   windowY: null,
@@ -438,6 +440,8 @@ function renderSettingsState(): void {
     b.classList.toggle("active", b.dataset.blurOpt === settings.blur);
   });
   $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
+  $("#lan-switch").classList.toggle("on", settings.lanView);
+  $<HTMLInputElement>("#lan-port").value = String(settings.lanPort ?? 9600);
   const alpha = settings.glassAlpha ?? 0.4;
   $<HTMLInputElement>("#glass-alpha").value = String(Math.round(alpha * 100));
   $("#glass-alpha-val").textContent = `${Math.round(alpha * 100)}%`;
@@ -653,7 +657,30 @@ async function bindEvents(): Promise<void> {
     });
   });
 
+  // 局域网查看
+  $("#lan-switch").addEventListener("click", () => {
+    settings.lanView = !settings.lanView;
+    $("#lan-switch").classList.toggle("on", settings.lanView);
+    $("#lan-hint").textContent = settings.lanView
+      ? "已保存，重启应用后生效。设备可通过 http://电脑IP:端口 访问只读视图。"
+      : "已关闭，重启应用后生效。";
+    persistSettings();
+  });
+  $<HTMLInputElement>("#lan-port").addEventListener("change", () => {
+    let v = parseInt($<HTMLInputElement>("#lan-port").value, 10);
+    if (isNaN(v) || v < 1024 || v > 65535) v = 9600;
+    $<HTMLInputElement>("#lan-port").value = String(v);
+    settings.lanPort = v;
+    $("#lan-hint").textContent = "端口已保存，重启应用后生效。";
+    persistSettings();
+  });
+
   // 首次启动向导
+  $("#ob-lan-switch").addEventListener("click", () => {
+    $("#ob-lan-switch").classList.toggle("on");
+  });
+  $("#ob-path").addEventListener("click", () => $("#ob-pick").click());
+  $("#data-path").addEventListener("click", () => $("#pick-dir").click());
   $("#ob-pick").addEventListener("click", () => {
     api.pickDataFolder()
       .then((dir) => {
@@ -670,6 +697,9 @@ async function bindEvents(): Promise<void> {
         todos = await api.changeDataDir(obPendingDir);
         render();
       }
+      settings.lanView = $("#ob-lan-switch").classList.contains("on");
+      const port = parseInt($<HTMLInputElement>("#ob-lan-port").value, 10);
+      settings.lanPort = isNaN(port) || port < 1024 || port > 65535 ? 9600 : port;
       settings.onboarded = true;
       await persistSettings();
       onboardingEl.classList.add("hidden");
@@ -718,6 +748,8 @@ async function boot(): Promise<void> {
   updateWallpaperLayer();
   if (!settings.onboarded) {
     $("#ob-path").textContent = settings.dataDir;
+    $("#ob-lan-switch").classList.toggle("on", settings.lanView);
+    $<HTMLInputElement>("#ob-lan-port").value = String(settings.lanPort ?? 9600);
     onboardingEl.classList.remove("hidden");
   }
   api.getVersion().then((v) => {

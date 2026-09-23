@@ -2,6 +2,7 @@
 
 mod backdrop;
 mod commands;
+mod lan;
 mod storage;
 mod wallpaper;
 
@@ -85,6 +86,9 @@ fn main() {
                         _ => None, // 跟随系统
                     };
                     let _ = backdrop::apply(&win, &settings.blur, dark);
+                }
+                if settings.lan_view {
+                    lan::start(settings.lan_port.unwrap_or(lan::DEFAULT_PORT));
                 }
             }
 

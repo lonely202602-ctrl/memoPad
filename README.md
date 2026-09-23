@@ -23,13 +23,14 @@
 - 📊 **任务进度**：按视图实时统计已完成/总数与百分比
 - 🎨 **三种主题**：跟随系统 / 浅色 / 深色；磨砂不透明度 20%-90% 自由调节
 - ⚙️ **贴心细节**：窗口置顶、开机自启、托盘常驻、单实例、位置尺寸记忆
+- 📡 **局域网查看**：手机等设备可通过端口只读查看待办（可选，默认关闭)
 
 ## 📦 下载安装
 
 | 文件 | 说明 |
 |------|------|
-| [memoPad_0.3.0_x64-setup.exe · 1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.3.0/memoPad_0.3.0_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
-| [memoPad_0.3.0_x64_portable.exe · 4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.3.0/memoPad_0.3.0_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
+| [memoPad_0.4.0_x64-setup.exe · 1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.4.0/memoPad_0.4.0_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
+| [memoPad_0.4.0_x64_portable.exe · 4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.4.0/memoPad_0.4.0_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
 
 更多版本请见 [Releases](https://github.com/lonely202602-ctrl/memoPad/releases) 页面。
 

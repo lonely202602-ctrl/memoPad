@@ -162,11 +162,11 @@ body[data-blur="none"] .wallpaper {
 }
 
 .brand-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: linear-gradient(145deg, #ffd75e, #f0a52a);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: url("/logo.png") center / cover no-repeat;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .win-actions {
@@ -926,6 +926,36 @@ textarea.text-input {
 
 .ob-section .path-box {
   margin-bottom: 8px;
+}
+
+.path-box.clickable {
+  cursor: pointer;
+}
+
+.path-box.clickable:hover {
+  border-color: var(--accent);
+}
+
+.lan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lan-label {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+input.port {
+  width: 110px;
+  flex: none;
+  text-align: center;
+}
+
+#lan-port-row {
+  margin-top: 10px;
 }
 
 .ob-hint {

@@ -25,6 +25,8 @@ pub struct Settings {
     pub blur: String,      // "mica" | "acrylic" | "none"
     pub glass_alpha: Option<f64>, // 毛玻璃不透明度 0.1~0.95，None=默认 0.4
     pub onboarded: bool,   // 首次启动向导是否已完成
+    pub lan_view: bool,    // 局域网只读查看
+    pub lan_port: Option<u16>,    // 局域网查看端口，None=默认 9600
     pub always_on_top: bool,
     pub window_x: Option<i32>,
     pub window_y: Option<i32>,
@@ -40,6 +42,8 @@ impl Default for Settings {
             blur: "acrylic".into(),
             glass_alpha: None,
             onboarded: false,
+            lan_view: false,
+            lan_port: None,
             always_on_top: true,
             window_x: None,
             window_y: None,
