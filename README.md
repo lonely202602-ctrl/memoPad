@@ -76,7 +76,9 @@ npm run tauri build  # 发布构建（NSIS 安装包 + 独立 exe）
 ## 📄 卸载
 
 - 安装版：Windows「设置 → 应用」中卸载，会自动清理开机自启项
-- 便携版：直接删除 exe 即可
+  - 默认安装到独立目录 `%LOCALAPPDATA%\memoPad`；卸载**只删除程序自己的文件**（主程序 + 卸载器）及快捷方式，你放在安装目录里的其他文件不会被删除
+  - 卸载界面的「删除应用数据」勾选项仅清理应用自身的 WebView2 缓存目录（`%LOCALAPPDATA%\com.memopad.desktop`），不会动你的待办数据
+- 便携版：单文件程序，直接删除 `memoPad.exe` 本体即可
 - 用户数据保留于 `%APPDATA%\memoPad`（及自定义存储位置），卸载不会删除
 
 ---

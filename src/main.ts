@@ -717,9 +717,9 @@ async function bindEvents(): Promise<void> {
           ub.textContent = "卸载 memoPad";
           uh.textContent = "";
         } else {
-          ub.textContent = "便携版 · 删除文件即可卸载";
+          ub.textContent = "便携版 · 删除 exe 即可卸载";
           uh.textContent =
-            "当前以便携方式运行（程序目录里没有卸载器）。卸载 = 直接删除 memoPad 所在文件夹，待办数据不会被动。";
+            "当前以便携方式运行（单文件程序）。卸载 = 直接删除 memoPad.exe 本体，不要删整个文件夹（里面可能有你的其他文件）；待办数据存于 %APPDATA%\\memoPad，不会被动。";
         }
       })
       .catch(() => {});
