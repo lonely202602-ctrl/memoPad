@@ -242,8 +242,19 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
             "acrylic" => {
                 disable_accent(hwnd);
                 let force = forced_impl();
-                // 1) 组合层 Acrylic：.blur 最通透最接近用户想要的观感；
-                //    Win11 22H2+ 失焦会丢模糊，由 reapply_acrylic 延迟补回
+                // 1) DWM 系统 Acrylic backdrop：常驻模糊，焦点变化零闪动（首选）
+                //    观感偏暗由 CSS 透明度补偿（设置面板滑杆可调）
+                if force.as_deref() != Some("host")
+                    && force.as_deref() != Some("acrylic4")
+                    && force.as_deref() != Some("stack")
+                {
+                    COMP_ACTIVE.store(false, Relaxed);
+                    if dwm_backdrop(hwnd, DWMSBT_TRANSIENTWINDOW) {
+                        return Ok("acrylic".into());
+                    }
+                }
+                // 2) 组合层 Acrylic：观感最透，但 Win11 22H2+ 失焦丢模糊（reapply 延迟补回，
+                //    会有一次明暗过渡），作为 transient 不可用时的降级
                 if force.as_deref() != Some("host")
                     && force.as_deref() != Some("transient")
                     && force.as_deref() != Some("stack")
@@ -253,7 +264,7 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
                     ACTIVE_ACCENT.store(ACCENT_ENABLE_ACRYLICBLURBEHIND as u8, Relaxed);
                     return Ok("acrylic".into());
                 }
-                // 2) Win11 HostBackdrop：本机实测只出透明无材质，保留作降级
+                // 3) Win11 HostBackdrop：部分系统可用，本机实测无材质
                 if force.as_deref() != Some("acrylic4")
                     && force.as_deref() != Some("transient")
                     && force.as_deref() != Some("stack")
@@ -263,9 +274,9 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
                     ACTIVE_ACCENT.store(ACCENT_ENABLE_HOSTBACKDROP as u8, Relaxed);
                     return Ok("acrylic".into());
                 }
-                // 3) DWM 系统 Acrylic backdrop：常驻但偏暗
-                if force.as_deref() == Some("transient")
-                    || force.as_deref() == Some("stack")
+                // 4) stack：transient + 组合层叠加（实验路径，仅 env 强制时到达）
+                if force.as_deref() == Some("stack")
+                    || force.as_deref() == Some("transient")
                     || force.is_none()
                 {
                     COMP_ACTIVE.store(false, Relaxed);
@@ -323,9 +334,7 @@ fn reapply_inner(window: &tauri::WebviewWindow) {
     if state != ACCENT_ENABLE_ACRYLICBLURBEHIND as u8 && state != ACCENT_ENABLE_HOSTBACKDROP as u8 {
         return;
     }
-    if let Some(hwnd) = hwnd_raw(window) {
-        disable_accent(hwnd);
-    }
+    // 不做 disable 预清理：直接覆盖策略，少一帧断档
     comp_acrylic(window, dark, state as u32);
 }
 

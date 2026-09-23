@@ -67,7 +67,7 @@ function effDark(): boolean {
 function applyThemeClass(): void {
   document.body.dataset.theme = settings.theme === "system" ? (systemDark() ? "dark" : "light") : settings.theme;
   document.body.dataset.blur = settings.blur;
-  document.body.style.setProperty("--base-alpha", String(settings.glassAlpha ?? 0.5));
+  document.body.style.setProperty("--base-alpha", String(settings.glassAlpha ?? 0.4));
 }
 
 async function refreshBlur(): Promise<void> {
@@ -247,7 +247,7 @@ function renderSettingsState(): void {
     b.classList.toggle("active", b.dataset.blurOpt === settings.blur);
   });
   $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
-  const alpha = settings.glassAlpha ?? 0.5;
+  const alpha = settings.glassAlpha ?? 0.4;
   $<HTMLInputElement>("#glass-alpha").value = String(Math.round(alpha * 100));
   $("#glass-alpha-val").textContent = `${Math.round(alpha * 100)}%`;
   const pathEl = $("#data-path");
