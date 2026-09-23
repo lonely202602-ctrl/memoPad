@@ -6,8 +6,8 @@
 
 | 文件 | 说明 |
 |------|------|
-| [memoPad_0.1.6_x64-setup.exe · ~1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.1.6/memoPad_0.1.6_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
-| [memoPad_0.1.6_x64_portable.exe · ~4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.1.6/memoPad_0.1.6_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
+| [memoPad_0.2.0_x64-setup.exe · ~1.4MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.2.0/memoPad_0.2.0_x64-setup.exe) | 安装版（推荐），按当前用户安装，无需管理员 |
+| [memoPad_0.2.0_x64_portable.exe · ~4.5MB](https://github.com/lonely202602-ctrl/memoPad/releases/download/v0.2.0/memoPad_0.2.0_x64_portable.exe) | 便携版，单文件双击即用，删除即卸载 |
 
 更多版本请见 [Releases](https://github.com/lonely202602-ctrl/memoPad/releases) 页面。
 
@@ -31,7 +31,7 @@ npm run tauri build  # 发布构建（NSIS 安装包 + 独立 exe）
 ```
 
 构建产物：
-- 安装包：`src-tauri/target/release/bundle/nsis/memoPad_0.1.6_x64-setup.exe`
+- 安装包：`src-tauri/target/release/bundle/nsis/memoPad_0.2.0_x64-setup.exe`
 - 独立程序：`src-tauri/target/release/memoPad.exe`（单文件可直接运行）
 
 ## 安装 / 卸载

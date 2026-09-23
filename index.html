@@ -29,8 +29,15 @@
 
       <div class="date-row" id="date-row" data-tauri-drag-region>
         <button id="date-prev" class="nav-btn" title="前一天">‹</button>
-        <button id="date-label" class="date-label" data-tauri-drag-region>今天</button>
+        <button id="date-label" class="date-label" title="点击打开日历">今天</button>
         <button id="date-next" class="nav-btn" title="后一天">›</button>
+      </div>
+
+      <div class="calendar hidden" id="calendar"></div>
+
+      <div class="progress-row" id="progress-row">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="progress-text" id="progress-text"></span>
       </div>
 
       <main class="list" id="list" data-tauri-drag-region></main>

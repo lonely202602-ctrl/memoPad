@@ -35,9 +35,12 @@ const carryBtn = $("#carry-btn");
 const drawer = $("#drawer");
 const todoDrawer = $("#todo-drawer");
 const wallpaperEl = $("#wallpaper");
+const calendarEl = $("#calendar");
 
 let editing: Todo | null = null;
 let wallpaperUrl: string | null = null;
+let calY = 0;
+let calM = 0; // 0-based month
 
 // ---- 日期工具 ----
 function pad(n: number): string {
@@ -69,7 +72,10 @@ function effDark(): boolean {
 function applyThemeClass(): void {
   document.body.dataset.theme = settings.theme === "system" ? (systemDark() ? "dark" : "light") : settings.theme;
   document.body.dataset.blur = settings.blur;
-  document.body.style.setProperty("--base-alpha", String(settings.glassAlpha ?? 0.4));
+  // 关闭磨砂时保底 90%，保证可读性；其余模式直接使用滑杆值
+  const raw = settings.glassAlpha ?? 0.4;
+  const eff = settings.blur === "none" ? Math.max(raw, 0.9) : raw;
+  document.body.style.setProperty("--base-alpha", String(eff));
 }
 
 async function refreshBlur(): Promise<void> {
@@ -125,6 +131,52 @@ async function setThemeMode(mode: Theme): Promise<void> {
   await refreshBlur();
   await persistSettings();
   renderSettingsState();
+}
+
+// ---- 日历 ----
+function openCalendar(): void {
+  const [y, m, d] = selectedDate.split("-").map(Number);
+  const base = selectedDate === todayStr() ? new Date() : new Date(y, m - 1, d);
+  calY = base.getFullYear();
+  calM = base.getMonth();
+  calendarEl.classList.remove("hidden");
+  renderCalendar();
+}
+
+function renderCalendar(): void {
+  const startOffset = (new Date(calY, calM, 1).getDay() + 6) % 7; // 周一为第一列
+  const daysInMonth = new Date(calY, calM + 1, 0).getDate();
+  const daysInPrev = new Date(calY, calM, 0).getDate();
+  const todoDates = new Set(todos.filter((t) => t.kind === "daily" && t.date).map((t) => t.date));
+  const today = todayStr();
+  let html = `<div class="cal-head">
+    <button class="nav-btn" data-cal="prev" title="上个月">‹</button>
+    <span class="cal-title">${calY}年${calM + 1}月</span>
+    <button class="nav-btn" data-cal="next" title="下个月">›</button>
+  </div><div class="cal-grid">`;
+  for (const w of ["一", "二", "三", "四", "五", "六", "日"]) html += `<span class="cal-wd">${w}</span>`;
+  for (let i = 0; i < 42; i++) {
+    const dayNum = i - startOffset + 1;
+    let cls = "cal-day";
+    let txt: string;
+    let dateStr: string | null = null;
+    if (dayNum < 1) {
+      txt = String(daysInPrev + dayNum);
+      cls += " dim";
+    } else if (dayNum > daysInMonth) {
+      txt = String(dayNum - daysInMonth);
+      cls += " dim";
+    } else {
+      txt = String(dayNum);
+      dateStr = `${calY}-${pad(calM + 1)}-${pad(dayNum)}`;
+      if (dateStr === today) cls += " today";
+      if (dateStr === selectedDate) cls += " sel";
+      if (todoDates.has(dateStr)) cls += " has";
+    }
+    html += `<button class="${cls}"${dateStr ? ` data-date="${dateStr}"` : ""}>${txt}${cls.includes("has") ? '<i class="cal-dot"></i>' : ""}</button>`;
+  }
+  html += `</div>`;
+  calendarEl.innerHTML = html;
 }
 
 // ---- 持久化 ----
@@ -246,11 +298,22 @@ function render(): void {
   const isToday = selectedDate === todayStr();
   dateRow.classList.toggle("hidden", view === "longterm");
   dateLabel.textContent = isToday ? "今天" : humanDate(selectedDate);
-  dateLabel.title = isToday ? "回到今天" : `${selectedDate}，点击回到今天`;
+  dateLabel.title = "点击打开日历";
 
   const scope = currentScope();
   const pending = scope.filter((t) => !t.done).sort((a, b) => a.createdAt - b.createdAt);
   const done = scope.filter((t) => t.done).sort((a, b) => (a.doneAt ?? 0) - (b.doneAt ?? 0));
+
+  // 进度条
+  const progressRow = $("#progress-row");
+  if (scope.length === 0) {
+    progressRow.style.visibility = "hidden";
+  } else {
+    progressRow.style.visibility = "visible";
+    const pct = Math.round((done.length / scope.length) * 100);
+    $("#progress-fill").style.width = `${pct}%`;
+    $("#progress-text").textContent = `${done.length}/${scope.length} · ${pct}%`;
+  }
 
   let html = "";
   for (const t of pending) html += itemHtml(t);
@@ -346,8 +409,30 @@ async function bindEvents(): Promise<void> {
     render();
   });
   dateLabel.addEventListener("click", () => {
-    selectedDate = todayStr();
-    render();
+    if (calendarEl.classList.contains("hidden")) openCalendar();
+    else calendarEl.classList.add("hidden");
+  });
+
+  // 日历事件委托
+  calendarEl.addEventListener("click", (e) => {
+    const nav = (e.target as HTMLElement).closest<HTMLElement>("[data-cal]");
+    if (nav) {
+      if (nav.dataset.cal === "prev") {
+        calM--;
+        if (calM < 0) { calM = 11; calY--; }
+      } else {
+        calM++;
+        if (calM > 11) { calM = 0; calY++; }
+      }
+      renderCalendar();
+      return;
+    }
+    const day = (e.target as HTMLElement).closest<HTMLElement>(".cal-day[data-date]");
+    if (day) {
+      selectedDate = day.dataset.date as string;
+      calendarEl.classList.add("hidden");
+      render();
+    }
   });
 
   // 列表事件委托

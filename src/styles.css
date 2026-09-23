@@ -38,15 +38,14 @@ body[data-theme="dark"] {
   --drawer-bg: rgba(20, 20, 26, 0.97);
 }
 
-/* 关闭磨砂时提高不透明度，保证可读性 */
-body[data-blur="none"][data-theme="light"],
-body[data-blur="acrylic"][data-theme="light"][data-blur-fallback="1"] {
-  --base-bg: rgba(250, 250, 252, 0.96);
+/* 关闭磨砂时提高不透明度，保证可读性（不透明度滑杆仍生效，下限由 JS 控制） */
+body[data-blur="none"][data-theme="light"] {
+  --base-bg: rgba(250, 250, 252, var(--base-alpha));
   --strip-bg: rgba(255, 255, 255, 0.85);
   --input-bg: rgba(255, 255, 255, 0.92);
 }
 body[data-blur="none"][data-theme="dark"] {
-  --base-bg: rgba(26, 26, 31, 0.96);
+  --base-bg: rgba(26, 26, 31, var(--base-alpha));
   --strip-bg: rgba(255, 255, 255, 0.1);
   --input-bg: rgba(255, 255, 255, 0.12);
 }
@@ -99,6 +98,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  border-radius: 12px;
   background: var(--base-bg);
   overflow: hidden;
 }
@@ -235,6 +235,122 @@ body[data-blur="none"] .wallpaper {
 
 .date-label:hover {
   background: var(--hover-bg);
+}
+
+/* ===== 日历弹层 ===== */
+.calendar {
+  position: absolute;
+  top: 88px;
+  left: 14px;
+  right: 14px;
+  z-index: 15;
+  background: var(--drawer-bg);
+  border: 1px solid var(--strip-border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  animation: fade-in 0.15s ease;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.cal-title {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-wd {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  padding: 2px 0;
+}
+
+.cal-day {
+  position: relative;
+  text-align: center;
+  font-size: 12px;
+  padding: 6px 0 7px;
+  border-radius: 7px;
+  color: var(--text);
+  transition: background 0.12s;
+}
+
+.cal-day:hover {
+  background: var(--hover-bg);
+}
+
+.cal-day.dim {
+  color: var(--text-dim);
+  opacity: 0.45;
+}
+
+.cal-day.today {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.cal-day.sel {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.cal-day.has::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+}
+
+.cal-day.sel.has::after {
+  background: #fff;
+}
+
+/* ===== 进度条 ===== */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 16px 6px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--strip-bg);
+  border: 1px solid var(--strip-border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #f2b24e, #dd9022);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-dim);
 }
 
 /* ===== 列表 ===== */
