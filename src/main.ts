@@ -312,7 +312,10 @@ function render(): void {
     progressRow.style.visibility = "visible";
     const pct = Math.round((done.length / scope.length) * 100);
     $("#progress-fill").style.width = `${pct}%`;
-    $("#progress-text").textContent = `${done.length}/${scope.length} · ${pct}%`;
+    $("#progress-text").innerHTML =
+      done.length === scope.length
+        ? `<b>全部完成</b> 🎉`
+        : `<b>${done.length}/${scope.length}</b> · ${pct}%`;
   }
 
   let html = "";
