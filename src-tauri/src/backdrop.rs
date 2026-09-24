@@ -93,9 +93,10 @@ pub fn apply(window: &tauri::WebviewWindow, mode: &str, dark: Option<bool>) -> R
                     dwm_backdrop(hwnd, DWMSBT_NONE);
                     return Ok("none".into());
                 }
-                "acrylic" => {
+                "acrylic" | "clear" => {
+                    // 毛玻璃（前端自绘）与透明（直接透出窗口后方）都不需要系统材质
                     dwm_backdrop(hwnd, DWMSBT_NONE);
-                    return Ok("acrylic".into());
+                    return Ok(mode.into());
                 }
                 _ => {
                     dwm_backdrop(hwnd, DWMSBT_NONE);

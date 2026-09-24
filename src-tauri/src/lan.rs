@@ -16,6 +16,10 @@ pub fn start(port: u16) {
         for stream in listener.incoming().flatten() {
             std::thread::spawn(move || {
                 let mut stream = stream;
+                // 防止连上不发数据的客户端永久占住线程
+                let timeout = Some(std::time::Duration::from_secs(3));
+                let _ = stream.set_read_timeout(timeout);
+                let _ = stream.set_write_timeout(timeout);
                 let mut buf = [0u8; 1024];
                 let _ = stream.read(&mut buf);
                 let req = String::from_utf8_lossy(&buf);
@@ -44,6 +48,8 @@ fn esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 fn render_html(todos: &[storage::Todo]) -> String {
@@ -55,7 +61,7 @@ fn render_html(todos: &[storage::Todo]) -> String {
         let date = t
             .date
             .as_deref()
-            .map(|d| format!(" · {}", d))
+            .map(|d| format!(" · {}", esc(d)))
             .unwrap_or_default();
         let row = format!(
             "<div class=\"item{}\"><span class=\"mark\">{}</span><span>{}</span><span class=\"date\">{}</span></div>",

@@ -18,6 +18,8 @@ body[data-theme="light"] {
   --seg-active-bg: rgba(255, 255, 255, 0.9);
   --hover-bg: rgba(255, 255, 255, 0.45);
   --drawer-bg: rgba(252, 252, 254, 0.97);
+  /* 面板玻璃：跟随磨砂不透明度滑杆（--base-alpha），下限 55% 保证可读性 */
+  --panel-glass: rgba(252, 252, 254, max(var(--base-alpha), 0.55));
   --wall-filter: blur(40px) saturate(0.8) brightness(1.15);
 }
 
@@ -40,19 +42,19 @@ body[data-theme="dark"] {
   --seg-active-bg: rgba(255, 255, 255, 0.16);
   --hover-bg: rgba(255, 255, 255, 0.08);
   --drawer-bg: rgba(20, 20, 26, 0.97);
+  --panel-glass: rgba(20, 20, 26, max(var(--base-alpha), 0.55));
 }
 
 /* 关闭磨砂时：实色表面（滑杆仍可微调，下限由 JS 控制） */
 body[data-blur="none"][data-theme="light"] {
-  --base-bg: var(--tint-solid);
   --strip-bg: rgba(255, 255, 255, 0.85);
   --input-bg: rgba(255, 255, 255, 0.92);
 }
 body[data-blur="none"][data-theme="dark"] {
-  --base-bg: var(--tint-solid);
   --strip-bg: rgba(255, 255, 255, 0.1);
   --input-bg: rgba(255, 255, 255, 0.12);
 }
+/* 透明模式：不叠壁纸不叠材质，纯靠色调层控制「看透的程度」 */
 
 /* ===== 基础 ===== */
 * {
@@ -113,6 +115,10 @@ body[data-blur="acrylic"] .base {
 body[data-blur="mica"] .base {
   background: var(--tint-color);
 }
+/* 透明：色调层直接叠在真实桌面上，滑杆控制「看透的程度」 */
+body[data-blur="clear"] .base {
+  background: var(--tint-color);
+}
 body[data-blur="none"] .base {
   background: var(--tint-solid);
 }
@@ -160,6 +166,7 @@ body[data-theme="light"] {
 }
 
 body[data-blur="mica"] .wallpaper,
+body[data-blur="clear"] .wallpaper,
 body[data-blur="none"] .wallpaper {
   display: none;
 }
@@ -298,7 +305,9 @@ body[data-theme="dark"] .pin-btn.on {
   left: 14px;
   right: 14px;
   z-index: 15;
-  background: var(--drawer-bg);
+  background: var(--panel-glass);
+  backdrop-filter: blur(26px) saturate(1.5);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
   border: 1px solid var(--strip-border);
   border-radius: 12px;
   padding: 12px;
@@ -422,6 +431,38 @@ body[data-theme="dark"] .pin-btn.on {
 .progress-text b {
   color: var(--accent-deep);
   font-weight: 600;
+}
+
+/* 数据提示条：文件损坏备份/迁移未迁移等一次性通知 */
+.data-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  margin: 0 12px 6px;
+  padding: 7px 8px 7px 10px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #7a5200;
+  background: rgba(240, 165, 42, 0.16);
+  border: 1px solid rgba(232, 163, 61, 0.55);
+  animation: slide-in 0.18s ease;
+}
+
+body[data-theme="dark"] .data-warning {
+  color: #ffd699;
+}
+
+.data-warning span {
+  flex: 1;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.data-warning .icon-btn {
+  flex: none;
+  opacity: 0.7;
 }
 
 body[data-theme="dark"] .progress-text b {
@@ -722,7 +763,9 @@ body[data-theme='dark'] .fancy-thumb {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  background: var(--drawer-bg);
+  background: var(--panel-glass);
+  backdrop-filter: blur(26px) saturate(1.5);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
   animation: fade-in 0.15s ease;
 }
 
@@ -959,7 +1002,9 @@ textarea.text-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--drawer-bg);
+  background: var(--panel-glass);
+  backdrop-filter: blur(26px) saturate(1.5);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
   animation: fade-in 0.2s ease;
 }
 

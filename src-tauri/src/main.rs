@@ -34,23 +34,36 @@ fn ensure_single_instance() {
             fn CreateMutexW(attrs: *mut c_void, initial_owner: i32, name: *const u16) -> *mut c_void;
             fn SetLastError(code: u32);
             fn GetLastError() -> u32;
+            fn CloseHandle(h: *mut c_void) -> i32;
         }
         const ERROR_ALREADY_EXISTS: u32 = 183;
         let name: Vec<u16> = "Local\\com.memopad.desktop-singleton\0".encode_utf16().collect();
-        SetLastError(0);
-        // 句柄故意不关闭，持有到进程退出以维持单实例语义
-        let handle = CreateMutexW(std::ptr::null_mut(), 1, name.as_ptr());
-        if GetLastError() == ERROR_ALREADY_EXISTS {
-            std::process::exit(0);
+        // 「重启」拉起的新进程：旧进程可能还没退完，最多等 5 秒让它释放互斥体
+        let restarted = std::env::args().any(|a| a == commands::RESTART_FLAG);
+        let mut tries = 0;
+        loop {
+            SetLastError(0);
+            // 句柄故意不关闭，持有到进程退出以维持单实例语义
+            let handle = CreateMutexW(std::ptr::null_mut(), 1, name.as_ptr());
+            if GetLastError() != ERROR_ALREADY_EXISTS {
+                std::mem::forget(handle);
+                break;
+            }
+            if !restarted || tries >= 50 {
+                std::process::exit(0);
+            }
+            CloseHandle(handle);
+            tries += 1;
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
-        std::mem::forget(handle);
     }
 }
 
 fn main() {
     ensure_single_instance();
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())        .plugin(tauri_plugin_autostart::init(
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
@@ -70,6 +83,8 @@ fn main() {
             commands::get_wallpaper_data_url,
             commands::uninstaller_available,
             commands::run_uninstaller,
+            commands::restart_app,
+            commands::take_data_warning,
         ])
         .setup(|app| {
             let settings = storage::load_settings();

@@ -91,10 +91,28 @@ pub fn save_settings(s: &Settings) -> Result<(), String> {
 }
 
 pub fn load_todos(s: &Settings) -> Vec<Todo> {
-    std::fs::read(data_path(s))
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default()
+    let path = data_path(s);
+    let Ok(bytes) = std::fs::read(&path) else {
+        return Vec::new(); // 文件不存在：全新开始
+    };
+    match serde_json::from_slice(&bytes) {
+        Ok(todos) => todos,
+        Err(_) => {
+            // 文件损坏：先改名留底，避免下一次保存用空列表覆盖掉原数据
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let backup = path.with_extension(format!("corrupt-{ts}.json"));
+            if std::fs::rename(&path, &backup).is_ok() {
+                set_warning(format!(
+                    "待办数据文件损坏，已自动备份为「{}」，本次以空白开始；确认无误后可删除备份文件。",
+                    backup.display()
+                ));
+            }
+            Vec::new()
+        }
+    }
 }
 
 pub fn save_todos(s: &Settings, todos: &[Todo]) -> Result<(), String> {
@@ -105,7 +123,15 @@ pub fn save_todos(s: &Settings, todos: &[Todo]) -> Result<(), String> {
 /// 数据迁移：旧位置的待办文件搬到新位置。
 /// rename 跨磁盘会失败（C 盘 → D 盘），失败时自动降级为复制 + 删除原件。
 pub fn migrate_data_file(old_path: &Path, new_path: &Path) -> Result<(), String> {
-    if !old_path.exists() || old_path == new_path || new_path.exists() {
+    if !old_path.exists() || old_path == new_path {
+        return Ok(());
+    }
+    if new_path.exists() {
+        // 目标已有数据文件：为避免覆盖，保留原位置文件不动，但必须让用户知道
+        set_warning(format!(
+            "已切换存储位置：目标目录已有数据文件，为避免覆盖未做迁移，原数据仍保留在「{}」。",
+            old_path.display()
+        ));
         return Ok(());
     }
     if std::fs::rename(old_path, new_path).is_ok() {
@@ -120,15 +146,37 @@ pub fn migrate_data_file(old_path: &Path, new_path: &Path) -> Result<(), String>
     }
     Ok(())
 }
-/// 原子写入：先写临时文件再改名，避免断电/崩溃损坏数据
+/// 原子写入：写临时文件 → 落盘 → 改名，断电/崩溃也不会留下半截文件
 fn atomic_write(path: &Path, bytes: Vec<u8>) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("无法创建目录 {}: {e}", parent.display()))?;
     }
     let tmp = path.with_extension("tmp");
     std::fs::write(&tmp, bytes).map_err(|e| format!("写入失败: {e}"))?;
+    if let Ok(f) = std::fs::OpenOptions::new().write(true).open(&tmp) {
+        let _ = f.sync_all();
+    }
     std::fs::rename(&tmp, path).map_err(|e| format!("保存失败: {e}"))?;
     Ok(())
+}
+
+/// 一次性通知（数据备份/迁移提示）：写在固定小文件里，前端启动时取走并清除
+pub fn warning_path() -> PathBuf {
+    app_dir().join("notice.txt")
+}
+
+pub fn set_warning(msg: String) {
+    let _ = std::fs::write(warning_path(), msg);
+}
+
+pub fn take_warning() -> Option<String> {
+    let msg = std::fs::read_to_string(warning_path())
+        .ok()
+        .filter(|s| !s.trim().is_empty());
+    if msg.is_some() {
+        let _ = std::fs::remove_file(warning_path());
+    }
+    msg
 }
 
 fn roaming_dir() -> PathBuf {

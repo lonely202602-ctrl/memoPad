@@ -583,6 +583,10 @@ function renderSettingsState(): void {
   $("#btn-pin").classList.toggle("on", settings.alwaysOnTop);
   $("#lan-switch").classList.toggle("on", settings.lanView);
   $<HTMLInputElement>("#lan-port").value = String(settings.lanPort ?? 9600);
+  $("#port-restart").classList.toggle(
+    "hidden",
+    String(settings.lanPort ?? 9600) === String(activeLanPort)
+  );
   const alpha = settings.glassAlpha ?? 0.45;
   $<HTMLInputElement>("#glass-alpha").value = String(Math.round(alpha * 100));
   // 「关闭」模式下表面为实色，透明度无意义——置灰并说明
@@ -879,8 +883,21 @@ async function bindEvents(): Promise<void> {
     if (isNaN(v) || v < 1024 || v > 65535) v = 9600;
     $<HTMLInputElement>("#lan-port").value = String(v);
     settings.lanPort = v;
-    $("#lan-hint").textContent = "端口已保存，重启应用后生效。";
+    $("#lan-hint").textContent = "端口已保存，点击「重启生效」立即应用。";
     persistSettings();
+  });
+  // 输入过程中：与当前生效端口不同时显示「重启生效」
+  $<HTMLInputElement>("#lan-port").addEventListener("input", () => {
+    const differs = $<HTMLInputElement>("#lan-port").value !== String(activeLanPort);
+    $("#port-restart").classList.toggle("hidden", !differs);
+  });
+  $("#port-restart").addEventListener("click", () => {
+    void api.restartApp();
+  });
+
+  // 数据提示条关闭
+  $("#data-warning-close").addEventListener("click", () => {
+    $("#data-warning").classList.add("hidden");
   });
 
   // 首次启动向导
@@ -942,8 +959,12 @@ async function bindEvents(): Promise<void> {
 }
 
 // ---- 启动 ----
+// LAN 服务当前实际监听的端口（= 启动时的保存值）；改动后需重启才切换到此值
+let activeLanPort = 9600;
+
 async function boot(): Promise<void> {
   [settings, todos] = await Promise.all([api.getSettings(), api.getTodos()]);
+  activeLanPort = settings.lanPort ?? 9600;
   applyThemeClass();
   renderSettingsState();
   await bindEvents();
@@ -953,6 +974,14 @@ async function boot(): Promise<void> {
     await refreshMonitor();
   }
   updateWallpaperLayer();
+  // 一次性通知（数据备份/迁移提示）
+  api.takeDataWarning()
+    .then((w) => {
+      if (!w) return;
+      $("#data-warning-text").textContent = w;
+      $("#data-warning").classList.remove("hidden");
+    })
+    .catch(() => {});
   if (!settings.onboarded) {
     $("#ob-path").textContent = settings.dataDir;
     $("#ob-lan-switch").classList.toggle("on", settings.lanView);

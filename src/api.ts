@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type Theme = "system" | "light" | "dark";
-export type Blur = "mica" | "acrylic" | "none";
+export type Blur = "mica" | "acrylic" | "clear" | "none";
 export type View = "daily" | "longterm";
 
 export interface Todo {
@@ -32,6 +32,8 @@ export interface Settings {
 
 export const api = {
   getVersion: () => invoke<string>("get_version"),
+  takeDataWarning: () => invoke<string | null>("take_data_warning"),
+  restartApp: () => invoke<void>("restart_app"),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
   getTodos: () => invoke<Todo[]>("get_todos"),

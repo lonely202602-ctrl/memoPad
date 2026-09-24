@@ -40,9 +40,30 @@ pub fn run_uninstaller() -> Result<String, String> {
     Ok("已启动卸载程序".into())
 }
 
+/// 重启拉起的新进程携带此参数，用于等待旧进程释放单实例互斥体
+pub const RESTART_FLAG: &str = "--memopad-restarted";
+
+/// 重启应用（局域网开关/端口等需重启生效的设置）
+#[tauri::command]
+pub fn restart_app(app: AppHandle) -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    std::process::Command::new(exe)
+        .arg(RESTART_FLAG)
+        .spawn()
+        .map_err(|e| format!("无法重启: {e}"))?;
+    app.exit(0);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// 取走一次性通知（数据备份/迁移提示），读取即清除
+#[tauri::command]
+pub fn take_data_warning() -> Option<String> {
+    storage::take_warning()
 }
 
 #[tauri::command]

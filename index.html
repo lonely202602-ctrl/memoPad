@@ -42,6 +42,11 @@
       </div>
       <!-- 进度示例：progress-text 由 JS 填充，如 <b>2/5</b> · 40% -->
 
+      <div class="data-warning hidden" id="data-warning">
+        <span id="data-warning-text"></span>
+        <button id="data-warning-close" class="icon-btn" title="知道了">✕</button>
+      </div>
+
       <main class="list" id="list" data-tauri-drag-region></main>
 
       <div class="carry-row hidden" id="carry-row">
@@ -74,6 +79,7 @@
             <div class="seg" id="blur-seg">
               <button data-blur-opt="acrylic">毛玻璃</button>
               <button data-blur-opt="mica">Mica</button>
+              <button data-blur-opt="clear">透明</button>
               <button data-blur-opt="none">关闭</button>
             </div>
           </div>
@@ -89,6 +95,7 @@
           <div class="setting row" id="lan-port-row">
             <label>端口</label>
             <input id="lan-port" class="text-input port" type="number" min="1024" max="65535" value="9600" />
+            <button id="port-restart" class="mini-btn hidden" title="立即重启应用，使新端口生效">重启生效</button>
           </div>
           <p class="ob-hint" id="lan-hint">开启后同一局域网设备可只读查看待办（http://电脑IP:端口）；修改端口需重启应用生效。</p>
           <div class="setting row">
