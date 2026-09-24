@@ -128,19 +128,16 @@ const listScroll = setupFancyScroll(listEl, document.querySelector<HTMLElement>(
 const drawerScroll = setupFancyScroll($<HTMLElement>(".drawer-body"), $<HTMLElement>(".drawer"));
 
 // ---- 区域切换：主视图与整幅面板互斥展示（不叠层），滑入滑出过渡 ----
-// 面板滑入用 CSS class + transition（WAAPI 在同帧切换 display 时动画会卡在首帧）
+// 面板过渡用一次性 CSS 动画（animation 结束即回归自然态）：
+// 若给面板挂常驻 transform/will-change 合成层，窗口移动/缩放后
+// WebView2 不会重排该层，面板会冻结在旧几何上（实测复现）
 let viewGen = 0;
 
 function showPanel(drawer: HTMLElement, prepare?: () => void): void {
   const gen = ++viewGen;
   prepare?.();
-  drawer.classList.remove("hidden");
-  void drawer.offsetWidth; // 强制回流，让过渡从闭合态起步
-  drawer.classList.add("open");
-  if (REDUCE_MOTION.matches) {
-    mainView.style.display = "none";
-    return;
-  }
+  // 面板同步显示（可见性绝不依赖动画是否推进）；主视图淡出仅作过渡提示
+  drawer.classList.remove("hidden", "panel-out");
   mainView
     .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-out" })
     .onfinish = () => {
@@ -152,15 +149,17 @@ function showPanel(drawer: HTMLElement, prepare?: () => void): void {
 
 function showMain(drawer: HTMLElement): void {
   const gen = ++viewGen;
-  drawer.classList.remove("open");
   if (REDUCE_MOTION.matches) {
     drawer.classList.add("hidden");
+    drawer.classList.remove("panel-out");
     mainView.style.display = "";
     return;
   }
+  drawer.classList.add("panel-out");
   setTimeout(() => {
     if (gen !== viewGen) return;
     drawer.classList.add("hidden");
+    drawer.classList.remove("panel-out");
     mainView.style.display = "";
     mainView.style.opacity = "0";
     mainView

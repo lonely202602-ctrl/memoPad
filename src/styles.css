@@ -775,19 +775,25 @@ body[data-theme='dark'] .fancy-thumb {
   background: var(--panel-glass);
   backdrop-filter: blur(26px) saturate(1.5);
   -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  /* 区域切换过渡：闭合态偏右隐藏，.open 时滑入就位 */
-  opacity: 0;
-  transform: translateX(36px);
-  pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform, opacity;
 }
 
-.drawer.open {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
+/* 滑出用一次性动画：结束后不残留 transform/opacity，
+   否则常驻合成层会在窗口移动/缩放后停留在旧几何上（实测布局冻结 bug）。
+   滑入不动画——面板可见性绝不依赖动画是否推进 */
+.drawer.panel-out {
+  animation: panel-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes panel-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(36px);
+  }
 }
 
 @keyframes fade-in {
