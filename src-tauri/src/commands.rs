@@ -66,6 +66,12 @@ pub fn take_data_warning() -> Option<String> {
     storage::take_warning()
 }
 
+/// 退出应用（标题栏 ✕；托盘菜单同样提供退出）
+#[tauri::command]
+pub fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 #[tauri::command]
 pub fn get_settings() -> storage::Settings {
     storage::load_settings()

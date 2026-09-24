@@ -1,6 +1,6 @@
 import "./styles.css";
 import { api, type Blur, type Settings, type Theme, type Todo, type View } from "./api";
-import { availableMonitors, getCurrentWindow } from "@tauri-apps/api/window";
+import { availableMonitors, getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 const win = getCurrentWindow();
 
@@ -17,6 +17,9 @@ let settings: Settings = {
   lanView: false,
   lanPort: null,
   alwaysOnTop: true,
+  mini: false,
+  preMiniW: null,
+  preMiniH: null,
   windowX: null,
   windowY: null,
   windowW: null,
@@ -468,6 +471,79 @@ function toggleTodo(t: Todo): void {
   t.doneAt = t.done ? Date.now() : null;
   saveTodosSoon();
   renderFlip();
+  renderMini();
+}
+
+// ---- 折叠为迷你条 ----
+const MINI_H = 100; // 标题栏 36 + 迷你行 64
+
+function firstPending(): Todo | undefined {
+  return [...todos].filter((t) => !t.done).sort((a, b) => a.createdAt - b.createdAt)[0];
+}
+
+function renderMini(): void {
+  if (!settings.mini) return;
+  const t = firstPending();
+  const todoEl = $("#mini-todo");
+  const doneBtn = $("#mini-done");
+  if (t) {
+    todoEl.textContent = t.content;
+    todoEl.classList.remove("empty");
+    doneBtn.classList.remove("hidden");
+  } else {
+    todoEl.textContent = "暂无待办，点击展开添加";
+    todoEl.classList.add("empty");
+    doneBtn.classList.add("hidden");
+  }
+}
+
+async function animateHeight(toH: number): Promise<void> {
+  const size = await win.innerSize();
+  const sf = await win.scaleFactor();
+  const logical = size.toLogical(sf);
+  const fromH = logical.height;
+  const steps = 9;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const e = 1 - Math.pow(1 - t, 3);
+    await win.setSize(new LogicalSize(logical.width, Math.round(fromH + (toH - fromH) * e)));
+    await new Promise((r) => setTimeout(r, 16));
+  }
+}
+
+async function collapseToMini(): Promise<void> {
+  // 面板开着先归位
+  if (!drawer.classList.contains("hidden")) showMain(drawer);
+  if (!todoDrawer.classList.contains("hidden")) closeTodoDetail();
+  const size = await win.innerSize();
+  const sf = await win.scaleFactor();
+  const logical = size.toLogical(sf);
+  settings.preMiniW = Math.round(logical.width);
+  settings.preMiniH = Math.round(logical.height);
+  settings.mini = true;
+  document.body.dataset.mini = "1";
+  $("#mini-bar").classList.remove("hidden");
+  await win.setMinSize(new LogicalSize(200, 60));
+  renderMini();
+  await persistSettings();
+  await animateHeight(MINI_H);
+  $("#btn-fold").textContent = "⇲";
+  $("#btn-fold").title = "展开便签";
+}
+
+async function expandFromMini(): Promise<void> {
+  if (!settings.mini) return;
+  settings.mini = false;
+  document.body.dataset.mini = "0";
+  $("#mini-bar").classList.add("hidden");
+  await animateHeight(settings.preMiniH ?? 540);
+  await win.setMinSize(new LogicalSize(290, 400));
+  if (settings.preMiniW) {
+    await win.setSize(new LogicalSize(settings.preMiniW, settings.preMiniH ?? 540)).catch(() => {});
+  }
+  await persistSettings();
+  $("#btn-fold").textContent = "⇱";
+  $("#btn-fold").title = "折叠为迷你条";
 }
 
 // 删除：数据立即移除并让列表滑升补位（FLIP），
@@ -613,6 +689,7 @@ function render(): void {
   const pastPending = view === "daily" && !isToday ? pending.length : 0;
   carryRow.classList.toggle("hidden", pastPending === 0);
   if (pastPending > 0) carryBtn.textContent = `把 ${pastPending} 项未完成移到今天`;
+  renderMini();
   listScroll.update();
 }
 
@@ -810,8 +887,26 @@ async function bindEvents(): Promise<void> {
     $("#top-switch").classList.toggle("on", settings.alwaysOnTop);
     persistSettings();
   });
-  $("#btn-hide").addEventListener("click", () => void win.hide());
+  // 折叠为迷你条 / 展开（折叠与置顶互不影响）
+  $("#btn-fold").addEventListener("click", () => {
+    void (settings.mini ? expandFromMini() : collapseToMini());
+  });
+  // ✕ 退出程序（托盘菜单也有退出入口）
+  $("#btn-quit").addEventListener("click", () => void api.quitApp());
+  // 迷你条：✓ 直接完成第一条待办；点待办文字展开便签
+  $("#mini-done").addEventListener("click", () => {
+    const t = firstPending();
+    if (t) toggleTodo(t);
+  });
+  $("#mini-todo").addEventListener("click", () => {
+    if (settings.mini) void expandFromMini();
+  });
   $("#btn-settings").addEventListener("click", () => {
+    // 迷你条下先展开再进设置，避免面板被压进 78px 高的条里
+    if (settings.mini) {
+      void expandFromMini();
+      return;
+    }
     showPanel(drawer, () => {
       renderSettingsState();
       drawerScroll.show();
@@ -1014,6 +1109,16 @@ async function boot(): Promise<void> {
   [settings, todos] = await Promise.all([api.getSettings(), api.getTodos()]);
   activeLanPort = settings.lanPort ?? 9600;
   applyThemeClass();
+  // 折叠状态持久化：重启后仍为迷你条（窗口尺寸由 Rust 侧按保存值恢复）
+  document.body.dataset.mini = settings.mini ? "1" : "0";
+  if (settings.mini) {
+    $("#mini-bar").classList.remove("hidden");
+    $("#btn-fold").textContent = "⇲";
+    $("#btn-fold").title = "展开便签";
+    renderMini();
+    // 兼容旧版本保存的折叠高度，校正为标准迷你条高度
+    void win.setSize(new LogicalSize(settings.windowW ?? 340, MINI_H)).catch(() => {});
+  }
   renderSettingsState();
   await bindEvents();
   render();

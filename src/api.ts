@@ -24,6 +24,9 @@ export interface Settings {
   lanView: boolean; // 局域网只读查看
   lanPort: number | null; // 局域网端口，null=默认 9600
   alwaysOnTop: boolean;
+  mini: boolean;                 // 折叠为迷你条
+  preMiniW: number | null;       // 折叠前的宽度
+  preMiniH: number | null;       // 折叠前的高度
   windowX: number | null;
   windowY: number | null;
   windowW: number | null;
@@ -34,6 +37,7 @@ export const api = {
   getVersion: () => invoke<string>("get_version"),
   takeDataWarning: () => invoke<string | null>("take_data_warning"),
   restartApp: () => invoke<void>("restart_app"),
+  quitApp: () => invoke<void>("quit_app"),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
   getTodos: () => invoke<Todo[]>("get_todos"),

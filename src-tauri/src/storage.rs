@@ -28,6 +28,9 @@ pub struct Settings {
     pub lan_view: bool,    // 局域网只读查看
     pub lan_port: Option<u16>,    // 局域网查看端口，None=默认 9600
     pub always_on_top: bool,
+    pub mini: bool,                    // 折叠为迷你条
+    pub pre_mini_w: Option<f64>,       // 折叠前的宽度
+    pub pre_mini_h: Option<f64>,       // 折叠前的高度
     pub window_x: Option<i32>,
     pub window_y: Option<i32>,
     pub window_w: Option<f64>,
@@ -45,6 +48,9 @@ impl Default for Settings {
             lan_view: false,
             lan_port: None,
             always_on_top: true,
+            mini: false,
+            pre_mini_w: None,
+            pre_mini_h: None,
             window_x: None,
             window_y: None,
             window_w: None,

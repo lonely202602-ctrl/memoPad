@@ -17,9 +17,16 @@
           <button id="btn-pin" class="icon-btn pin-btn" title="窗口置顶">📌</button>
           <button id="btn-theme" class="icon-btn" title="切换主题（浅色 / 深色）">◐</button>
           <button id="btn-settings" class="icon-btn" title="设置">⚙</button>
-          <button id="btn-hide" class="icon-btn" title="隐藏到托盘">—</button>
+          <button id="btn-fold" class="icon-btn" title="折叠为迷你条">⇱</button>
+          <button id="btn-quit" class="icon-btn quit-btn" title="退出 memoPad">✕</button>
         </div>
       </header>
+
+      <div id="mini-bar" class="hidden" data-tauri-drag-region>
+        <div class="mini-logo" data-tauri-drag-region title="memoPad"></div>
+        <div class="mini-todo" id="mini-todo" data-tauri-drag-region title="点击展开便签"></div>
+        <button id="mini-done" class="mini-done hidden" title="完成该待办">✓</button>
+      </div>
 
       <div id="main-view">
         <nav class="tabs-row">

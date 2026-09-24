@@ -85,6 +85,7 @@ fn main() {
             commands::run_uninstaller,
             commands::restart_app,
             commands::take_data_warning,
+            commands::quit_app,
         ])
         .setup(|app| {
             let settings = storage::load_settings();
