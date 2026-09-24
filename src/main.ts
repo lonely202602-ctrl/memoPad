@@ -37,6 +37,7 @@ const carryRow = $("#carry-row");
 const carryBtn = $("#carry-btn");
 const drawer = $("#drawer");
 const todoDrawer = $("#todo-drawer");
+const mainView = $("#main-view");
 const wallpaperEl = $("#wallpaper");
 const calendarEl = $("#calendar");
 const onboardingEl = $("#onboarding");
@@ -125,6 +126,50 @@ function setupFancyScroll(container: HTMLElement, host: HTMLElement) {  const ba
 
 const listScroll = setupFancyScroll(listEl, document.querySelector<HTMLElement>(".base")!);
 const drawerScroll = setupFancyScroll($<HTMLElement>(".drawer-body"), $<HTMLElement>(".drawer"));
+
+// ---- 区域切换：主视图与整幅面板互斥展示（不叠层），滑入滑出过渡 ----
+// 面板滑入用 CSS class + transition（WAAPI 在同帧切换 display 时动画会卡在首帧）
+let viewGen = 0;
+
+function showPanel(drawer: HTMLElement, prepare?: () => void): void {
+  const gen = ++viewGen;
+  prepare?.();
+  drawer.classList.remove("hidden");
+  void drawer.offsetWidth; // 强制回流，让过渡从闭合态起步
+  drawer.classList.add("open");
+  if (REDUCE_MOTION.matches) {
+    mainView.style.display = "none";
+    return;
+  }
+  mainView
+    .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-out" })
+    .onfinish = () => {
+      if (gen !== viewGen) return;
+      mainView.style.opacity = "0";
+      mainView.style.display = "none";
+    };
+}
+
+function showMain(drawer: HTMLElement): void {
+  const gen = ++viewGen;
+  drawer.classList.remove("open");
+  if (REDUCE_MOTION.matches) {
+    drawer.classList.add("hidden");
+    mainView.style.display = "";
+    return;
+  }
+  setTimeout(() => {
+    if (gen !== viewGen) return;
+    drawer.classList.add("hidden");
+    mainView.style.display = "";
+    mainView.style.opacity = "0";
+    mainView
+      .animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: "ease-out" })
+      .onfinish = () => {
+        if (gen === viewGen) mainView.style.opacity = "";
+      };
+  }, 190);
+}
 
 // ---- FLIP 过渡：仅 transform 合成器动画，不触发重排 ----
 function captureRects(): Map<string, DOMRect> {
@@ -619,14 +664,13 @@ function openTodoDetail(t: Todo): void {
   editing = t;
   $<HTMLInputElement>("#detail-title").value = t.content;
   $<HTMLTextAreaElement>("#detail-text").value = t.detail ?? "";
-  renderDetailState();
-  todoDrawer.classList.remove("hidden");
+  showPanel(todoDrawer, () => renderDetailState());
   $<HTMLInputElement>("#detail-title").focus();
 }
 
 function closeTodoDetail(): void {
   editing = null;
-  todoDrawer.classList.add("hidden");
+  showMain(todoDrawer);
 }
 
 function syncListItem(t: Todo): void {
@@ -769,12 +813,13 @@ async function bindEvents(): Promise<void> {
   });
   $("#btn-hide").addEventListener("click", () => void win.hide());
   $("#btn-settings").addEventListener("click", () => {
-    drawer.classList.remove("hidden");
-    renderSettingsState();
-    drawerScroll.show();
-    void applyUninstallState();
+    showPanel(drawer, () => {
+      renderSettingsState();
+      drawerScroll.show();
+      void applyUninstallState();
+    });
   });
-  $("#drawer-close").addEventListener("click", () => drawer.classList.add("hidden"));
+  $("#drawer-close").addEventListener("click", () => showMain(drawer));
   $("#btn-theme").addEventListener("click", () => {
     // 直接在明暗间切换，保证每次点击都有可见变化；「跟随系统」在设置面板选择
     void setThemeMode(effDark() ? "light" : "dark");
@@ -867,6 +912,10 @@ async function bindEvents(): Promise<void> {
     el.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeTodoDetail();
     });
+  });
+  // Esc 也能关掉设置面板
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !drawer.classList.contains("hidden")) showMain(drawer);
   });
 
   // 局域网查看

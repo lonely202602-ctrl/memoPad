@@ -21,44 +21,46 @@
         </div>
       </header>
 
-      <nav class="tabs-row">
-        <div class="tabs">
-          <button class="tab active" data-view="daily">每日</button>
-          <button class="tab" data-view="longterm">长期</button>
+      <div id="main-view">
+        <nav class="tabs-row">
+          <div class="tabs">
+            <button class="tab active" data-view="daily">每日</button>
+            <button class="tab" data-view="longterm">长期</button>
+          </div>
+        </nav>
+
+        <div class="date-row" id="date-row" data-tauri-drag-region>
+          <button id="date-prev" class="nav-btn" title="前一天">‹</button>
+          <button id="date-label" class="date-label" title="点击打开日历">今天</button>
+          <button id="date-next" class="nav-btn" title="后一天">›</button>
         </div>
-      </nav>
 
-      <div class="date-row" id="date-row" data-tauri-drag-region>
-        <button id="date-prev" class="nav-btn" title="前一天">‹</button>
-        <button id="date-label" class="date-label" title="点击打开日历">今天</button>
-        <button id="date-next" class="nav-btn" title="后一天">›</button>
+        <div class="calendar hidden" id="calendar"></div>
+
+        <div class="progress-row" id="progress-row">
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <span class="progress-text" id="progress-text"></span>
+        </div>
+        <!-- 进度示例：progress-text 由 JS 填充，如 <b>2/5</b> · 40% -->
+
+        <div class="data-warning hidden" id="data-warning">
+          <span id="data-warning-text"></span>
+          <button id="data-warning-close" class="icon-btn" title="知道了">✕</button>
+        </div>
+
+        <main class="list" id="list" data-tauri-drag-region></main>
+
+        <div class="carry-row hidden" id="carry-row">
+          <button id="carry-btn" class="carry-btn"></button>
+        </div>
+
+        <footer class="composer">
+          <input id="new-input" type="text" placeholder="添加待办，回车确认…" maxlength="200" autocomplete="off" />
+          <button id="add-btn" class="add-btn" title="添加">＋</button>
+        </footer>
+
+        <div class="grip" id="grip" title="拖动调整大小"></div>
       </div>
-
-      <div class="calendar hidden" id="calendar"></div>
-
-      <div class="progress-row" id="progress-row">
-        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-        <span class="progress-text" id="progress-text"></span>
-      </div>
-      <!-- 进度示例：progress-text 由 JS 填充，如 <b>2/5</b> · 40% -->
-
-      <div class="data-warning hidden" id="data-warning">
-        <span id="data-warning-text"></span>
-        <button id="data-warning-close" class="icon-btn" title="知道了">✕</button>
-      </div>
-
-      <main class="list" id="list" data-tauri-drag-region></main>
-
-      <div class="carry-row hidden" id="carry-row">
-        <button id="carry-btn" class="carry-btn"></button>
-      </div>
-
-      <footer class="composer">
-        <input id="new-input" type="text" placeholder="添加待办，回车确认…" maxlength="200" autocomplete="off" />
-        <button id="add-btn" class="add-btn" title="添加">＋</button>
-      </footer>
-
-      <div class="grip" id="grip" title="拖动调整大小"></div>
 
       <div class="drawer hidden" id="drawer">
         <div class="drawer-head">
