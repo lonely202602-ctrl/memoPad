@@ -235,15 +235,19 @@ body[data-theme="dark"] .pin-btn.on {
 
 /* ===== 迷你条（折叠模式）===== */
 #mini-bar {
-  display: flex;
-  align-items: center;
+  display: flex !important;
+  align-items: center !important;
   gap: 14px;
-  flex: none;
-  padding: 8px 14px;
+  flex: 0 0 auto !important;
+  height: 64px !important;
+  max-height: 64px !important;
+  padding: 0 14px !important;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 body:not([data-mini="1"]) #mini-bar {
-  display: none;
+  display: none !important;
 }
 
 body[data-mini="1"] #main-view {
@@ -264,16 +268,17 @@ body[data-mini="1"] .brand span {
 }
 
 .mini-todo {
-  flex: 1;
+  flex: 1 1 0 !important;
   min-width: 0;
+  align-self: center;
+  height: 48px !important;
+  max-height: 48px;
+  line-height: 48px;
   font-size: 13.5px;
-  line-height: 1.55;
   cursor: pointer;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .mini-todo.empty {
@@ -304,6 +309,46 @@ body[data-mini="1"] .brand span {
 
 .mini-done.hidden {
   display: none;
+}
+
+/* 折叠入场：Logo 从小到大放大过渡，待办文字随之淡入 */
+body[data-mini="1"] .mini-logo {
+  animation: mini-logo-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body[data-mini="1"] .mini-todo,
+body[data-mini="1"] .mini-done {
+  animation: mini-fade-in 0.28s ease 0.08s backwards;
+}
+
+@keyframes mini-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes mini-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-mini="1"] .mini-logo,
+  body[data-mini="1"] .mini-todo,
+  body[data-mini="1"] .mini-done {
+    animation: none;
+  }
 }
 
 /* ===== 页签 ===== */
