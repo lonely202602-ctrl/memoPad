@@ -53,6 +53,8 @@ fn esc(s: &str) -> String {
 }
 
 fn render_html(todos: &[storage::Todo]) -> String {
+    // 重复打卡任务与前端同口径：今天有没有勾，看 done_dates 里有没有今天
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let mut items = String::new();
     let mut pending = String::new();
     let mut done = String::new();
@@ -63,14 +65,17 @@ fn render_html(todos: &[storage::Todo]) -> String {
             .as_deref()
             .map(|d| format!(" · {}", esc(d)))
             .unwrap_or_default();
+        let is_done = (t.repeat.is_some() && t.done_dates.iter().any(|d| *d == today)) || t.done;
+        let badge = if t.repeat.is_some() { "🔁 " } else { "" };
         let row = format!(
-            "<div class=\"item{}\"><span class=\"mark\">{}</span><span>{}</span><span class=\"date\">{}</span></div>",
-            if t.done { " done" } else { "" },
-            if t.done { "✓" } else { "" },
+            "<div class=\"item{}\"><span class=\"mark\">{}</span><span>{}{}</span><span class=\"date\">{}</span></div>",
+            if is_done { " done" } else { "" },
+            if is_done { "✓" } else { "" },
+            badge,
             esc(&t.content),
             date
         );
-        if t.done {
+        if is_done {
             done.push_str(&row);
             done_count += 1;
         } else {

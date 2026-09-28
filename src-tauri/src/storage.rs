@@ -4,6 +4,15 @@ use std::path::{Path, PathBuf};
 pub const SETTINGS_FILE: &str = "settings.json";
 pub const DATA_FILE: &str = "memoPad-data.json";
 
+/// 重复打卡配置：任务本体只有一条，某天是否完成由 done_dates 派生。
+/// kind = "daily"（每天）| "every_n_days"（每 interval 天，锚点为创建日）
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Repeat {
+    pub kind: String,
+    pub interval: u32,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Todo {
@@ -15,6 +24,8 @@ pub struct Todo {
     pub done: bool,
     pub created_at: u64,
     pub done_at: Option<u64>,
+    pub repeat: Option<Repeat>,  // None = 不重复（老数据）
+    pub done_dates: Vec<String>, // 重复任务的打卡记录（YYYY-MM-DD）
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -145,6 +145,20 @@
             <label>详情</label>
             <textarea id="detail-text" class="text-input area" rows="9" placeholder="补充说明、备注、链接…&#10;自动保存"></textarea>
           </div>
+          <div class="setting" id="repeat-row">
+            <label>重复打卡</label>
+            <div class="seg" id="repeat-seg">
+              <button data-repeat-opt="off">不重复</button>
+              <button data-repeat-opt="daily">每天</button>
+              <button data-repeat-opt="every_n_days">每 N 天</button>
+            </div>
+            <div class="repeat-n-row hidden" id="repeat-n-row">
+              <span>每</span>
+              <input id="repeat-n" class="text-input port" type="number" min="2" max="365" value="3" />
+              <span>天打卡一次</span>
+            </div>
+            <p class="ob-hint" id="repeat-hint"></p>
+          </div>
           <div class="meta" id="detail-meta"></div>
           <div class="detail-actions">
             <button id="detail-delete" class="mini-btn danger">删除待办</button>

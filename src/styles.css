@@ -757,6 +757,27 @@ body[data-theme='dark'] .fancy-thumb {
   opacity: 1;
 }
 
+/* 重复打卡 */
+.rep-badge {
+  flex: none;
+  font-size: 11px;
+  font-style: normal;
+  opacity: 0.6;
+}
+
+.repeat-n-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+.repeat-n-row input {
+  width: 64px;
+}
+
 .del:hover {
   background: rgba(217, 83, 79, 0.15);
   color: var(--danger);

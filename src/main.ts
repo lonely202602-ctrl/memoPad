@@ -226,6 +226,65 @@ function humanDate(dateStr: string): string {
   return `${m}月${d}日 ${wd}`;
 }
 
+// ---- 重复打卡：纯派生状态 ----
+// 任务本体只有一条，某天完没完成由 doneDates 是否含该天算出，
+// 不用定时器归零：翻到新的一天渲染时自然回到未完成。
+function epochDay(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86400000);
+}
+
+function repeatInterval(t: Todo): number {
+  return Math.max(1, Math.floor(t.repeat?.interval ?? 1) || 1);
+}
+
+function isScheduledOn(t: Todo, dateStr: string): boolean {
+  if (!t.repeat) return false;
+  const anchor = epochDay(fmtDate(new Date(t.createdAt)));
+  if (t.repeat.kind === "daily") return epochDay(dateStr) >= anchor; // 创建日之前不存在此任务
+  if (t.repeat.kind === "every_n_days") {
+    // 锚点 = 创建日，从创建日起每 N 天排程
+    const diff = epochDay(dateStr) - anchor;
+    return diff >= 0 && diff % repeatInterval(t) === 0;
+  }
+  return false;
+}
+
+function doneOn(t: Todo, dateStr: string): boolean {
+  return t.repeat ? t.doneDates.includes(dateStr) : t.done;
+}
+
+function isPendingOn(t: Todo, dateStr: string): boolean {
+  if (t.repeat) return isScheduledOn(t, dateStr) && !t.doneDates.includes(dateStr);
+  return !t.done;
+}
+
+function prevScheduled(t: Todo, dateStr: string): string | null {
+  // 上一个计划打卡日；创建日之前不排程
+  const anchor = fmtDate(new Date(t.createdAt));
+  if (!t.repeat || dateStr <= anchor) return null;
+  if (t.repeat.kind === "daily") return addDays(dateStr, -1);
+  let p = addDays(dateStr, -1);
+  while (p >= anchor) {
+    if ((epochDay(p) - epochDay(anchor)) % repeatInterval(t) === 0) return p;
+    p = addDays(p, -1);
+  }
+  return null;
+}
+
+function streakOf(t: Todo): number {
+  // 连续打卡天数：今天的打卡没打不扣连击，从最后一个已过期打卡日回数
+  if (!t.repeat) return 0;
+  let d = todayStr();
+  if (!t.doneDates.includes(d)) d = prevScheduled(t, d) ?? "";
+  let n = 0;
+  while (d && t.doneDates.includes(d)) {
+    n++;
+    d = prevScheduled(t, d) ?? "";
+  }
+  return n;
+}
+
 // ---- 主题 / 磨砂 ----
 function systemDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -371,6 +430,14 @@ function renderCalendar(): void {
   const daysInMonth = new Date(calY, calM + 1, 0).getDate();
   const daysInPrev = new Date(calY, calM, 0).getDate();
   const todoDates = new Set(todos.filter((t) => t.kind === "daily" && t.date).map((t) => t.date));
+  // 重复任务：把显示月份内有排程的天都点上圆点（30 天 × 任务数，量级可忽略）
+  const monthDates: string[] = [];
+  for (let d = 1; d <= daysInMonth; d++) monthDates.push(`${calY}-${pad(calM + 1)}-${pad(d)}`);
+  for (const t of todos) {
+    if (t.kind === "daily" && t.repeat) {
+      for (const ds of monthDates) if (isScheduledOn(t, ds)) todoDates.add(ds);
+    }
+  }
   const today = todayStr();
   let html = `<div class="cal-head">
     <button class="nav-btn" data-cal="prev" title="上个月">‹</button>
@@ -442,7 +509,12 @@ async function saveWindowPos(): Promise<void> {
 // ---- 数据操作 ----
 function currentScope(): Todo[] {
   if (view === "daily") {
-    return todos.filter((t) => t.kind === "daily" && t.date === selectedDate);
+    // 重复任务不钉死在某一天：凡当天有排程的都归入该日
+    return todos.filter(
+      (t) =>
+        t.kind === "daily" &&
+        (t.date === selectedDate || (t.repeat && isScheduledOn(t, selectedDate)))
+    );
   }
   return todos.filter((t) => t.kind === "longterm");
 }
@@ -459,6 +531,8 @@ function addTodo(): void {
     done: false,
     createdAt: Date.now(),
     doneAt: null,
+    repeat: null,
+    doneDates: [],
   });
   newInput.value = "";
   newInput.focus();
@@ -466,9 +540,17 @@ function addTodo(): void {
   render();
 }
 
-function toggleTodo(t: Todo): void {
-  t.done = !t.done;
-  t.doneAt = t.done ? Date.now() : null;
+function toggleTodo(t: Todo, dateKey?: string): void {
+  if (t.repeat) {
+    // 重复任务按“天”打卡：完成态记进 doneDates，勾掉哪天记哪天
+    const key = dateKey ?? todayStr();
+    const i = t.doneDates.indexOf(key);
+    if (i >= 0) t.doneDates.splice(i, 1);
+    else t.doneDates.push(key);
+  } else {
+    t.done = !t.done;
+    t.doneAt = t.done ? Date.now() : null;
+  }
   saveTodosSoon();
   renderFlip();
   renderMini();
@@ -478,7 +560,8 @@ function toggleTodo(t: Todo): void {
 const MINI_H = 100; // 标题栏 36 + 迷你行 64
 
 function firstPending(): Todo | undefined {
-  return [...todos].filter((t) => !t.done).sort((a, b) => a.createdAt - b.createdAt)[0];
+  const today = todayStr();
+  return [...todos].filter((t) => isPendingOn(t, today)).sort((a, b) => a.createdAt - b.createdAt)[0];
 }
 
 function renderMini(): void {
@@ -581,7 +664,12 @@ function deleteTodo(t: Todo): void {
 }
 
 function clearDone(): void {
-  const ids = new Set(currentScope().filter((t) => t.done).map((t) => t.id));
+  // 重复任务不参与“清除”：它的完成态按天自净，删掉会连打卡配置一起丢
+  const ids = new Set(
+    currentScope()
+      .filter((t) => doneOn(t, selectedDate) && !t.repeat)
+      .map((t) => t.id)
+  );
   if (ids.size === 0) return;
   const els = [...listEl.querySelectorAll<HTMLElement>(".item")].filter((el) =>
     ids.has(el.dataset.id ?? "")
@@ -617,7 +705,7 @@ function carryOverToToday(): void {
   const today = todayStr();
   let n = 0;
   for (const t of todos) {
-    if (t.kind === "daily" && t.date === selectedDate && !t.done) {
+    if (t.kind === "daily" && !t.repeat && t.date === selectedDate && !t.done) {
       t.date = today;
       n++;
     }
@@ -636,10 +724,11 @@ function esc(s: string): string {
   );
 }
 
-function itemHtml(t: Todo, enter: boolean): string {
-  return `<div class="item${t.done ? " done" : ""}${enter ? " enter" : ""}" data-id="${t.id}" data-flip-key="${t.id}">
-    <button class="check" data-act="toggle" title="${t.done ? "标记为未完成" : "确认完成"}"></button>
-    <span class="content" data-act="open" title="点击编辑详情">${esc(t.content)}</span>
+function itemHtml(t: Todo, dateKey: string, enter: boolean): string {
+  const isDone = doneOn(t, dateKey);
+  return `<div class="item${isDone ? " done" : ""}${enter ? " enter" : ""}" data-id="${t.id}" data-flip-key="${t.id}">
+    <button class="check" data-act="toggle" title="${isDone ? "标记为未完成" : "确认完成"}"></button>
+    <span class="content" data-act="open" title="点击编辑详情">${esc(t.content)}</span>${t.repeat ? '<i class="rep-badge" title="重复打卡">🔁</i>' : ""}
     <button class="del" data-act="del" title="删除">✕</button>
   </div>`;
 }
@@ -651,8 +740,10 @@ function render(): void {
   dateLabel.title = "点击打开日历";
 
   const scope = currentScope();
-  const pending = scope.filter((t) => !t.done).sort((a, b) => a.createdAt - b.createdAt);
-  const done = scope.filter((t) => t.done).sort((a, b) => (a.doneAt ?? 0) - (b.doneAt ?? 0));
+  const pending = scope.filter((t) => !doneOn(t, selectedDate)).sort((a, b) => a.createdAt - b.createdAt);
+  const done = scope
+    .filter((t) => doneOn(t, selectedDate))
+    .sort((a, b) => (a.doneAt ?? 0) - (b.doneAt ?? 0) || a.createdAt - b.createdAt);
 
   // 进度条
   const progressRow = $("#progress-row");
@@ -669,10 +760,10 @@ function render(): void {
   }
 
   let html = "";
-  for (const t of pending) html += itemHtml(t, !knownIds.has(t.id));
+  for (const t of pending) html += itemHtml(t, selectedDate, !knownIds.has(t.id));
   if (done.length > 0) {
     html += `<div class="done-head" data-flip-key="done-head"><span>已完成 · ${done.length}</span><button class="clear-done" data-act="clear">清除</button></div>`;
-    for (const t of done) html += itemHtml(t, !knownIds.has(t.id));
+    for (const t of done) html += itemHtml(t, selectedDate, !knownIds.has(t.id));
   }
   if (scope.length === 0) {
     html += `<div class="empty">${
@@ -730,10 +821,42 @@ function fmtTs(ts: number): string {
 function renderDetailState(): void {
   if (!editing) return;
   const btn = $("#detail-done");
-  btn.textContent = editing.done ? "取消完成" : "标记完成";
+  const key = view === "daily" ? selectedDate : todayStr();
+  const doneNow = doneOn(editing, key);
+  btn.textContent = doneNow ? "取消完成" : "标记完成";
   $("#detail-meta").textContent =
     `${editing.kind === "daily" ? `每日 · ${editing.date}` : "长期"} · 创建于 ${fmtTs(editing.createdAt)}` +
     (editing.doneAt ? ` · 完成于 ${fmtTs(editing.doneAt)}` : "");
+
+  // 重复打卡：仅每日任务支持；长期任务本身无终点，不提供
+  const repeatRow = $("#repeat-row");
+  repeatRow.classList.toggle("hidden", editing.kind !== "daily");
+  if (editing.kind !== "daily") return;
+  const kind = editing.repeat?.kind ?? "off";
+  document.querySelectorAll<HTMLButtonElement>("[data-repeat-opt]").forEach((b) => {
+    b.classList.toggle("active", b.dataset.repeatOpt === (kind === "off" ? "off" : kind));
+  });
+  $("#repeat-n-row").classList.toggle("hidden", kind !== "every_n_days");
+  $<HTMLInputElement>("#repeat-n").value = String(
+    kind === "every_n_days" ? repeatInterval(editing) : 3
+  );
+  $("#repeat-hint").textContent = editing.repeat
+    ? `已连续打卡 ${streakOf(editing)} 天 · 累计 ${editing.doneDates.length} 次`
+    : "开启后该任务会按周期自动回到待打卡，勾掉的只是当天的记录。";
+}
+
+function setRepeat(opt: string): void {
+  if (!editing || editing.kind !== "daily") return;
+  if (opt === "off") editing.repeat = null;
+  else if (opt === "daily") editing.repeat = { kind: "daily", interval: 1 };
+  else
+    editing.repeat = {
+      kind: "every_n_days",
+      interval: editing.repeat?.kind === "every_n_days" ? editing.repeat.interval : 3,
+    };
+  saveTodosSoon();
+  renderDetailState();
+  renderFlip(); // 列表角标与归属随配置即时变化
 }
 
 function openTodoDetail(t: Todo): void {
@@ -814,7 +937,7 @@ async function bindEvents(): Promise<void> {
     if (!item) return;
     const t = todos.find((x) => x.id === item.dataset.id);
     if (!t) return;
-    if (act === "toggle") toggleTodo(t);
+    if (act === "toggle") toggleTodo(t, selectedDate);
     else if (act === "del") deleteTodo(t);
     else if (act === "open") openTodoDetail(t);
   });
@@ -992,7 +1115,7 @@ async function bindEvents(): Promise<void> {
   });
   $("#detail-done").addEventListener("click", () => {
     if (!editing) return;
-    toggleTodo(editing);
+    toggleTodo(editing, view === "daily" ? selectedDate : undefined);
     renderDetailState();
   });
   $("#detail-delete").addEventListener("click", () => {
@@ -1002,6 +1125,21 @@ async function bindEvents(): Promise<void> {
     deleteTodo(t);
   });
   $("#todo-drawer-close").addEventListener("click", closeTodoDetail);
+  // 重复打卡配置
+  document.querySelectorAll<HTMLButtonElement>("[data-repeat-opt]").forEach((b) => {
+    b.addEventListener("click", () => setRepeat(b.dataset.repeatOpt ?? "off"));
+  });
+  $("#repeat-n").addEventListener("change", () => {
+    if (!editing?.repeat) return;
+    let v = parseInt($<HTMLInputElement>("#repeat-n").value, 10);
+    if (isNaN(v) || v < 2) v = 2;
+    if (v > 365) v = 365;
+    $<HTMLInputElement>("#repeat-n").value = String(v);
+    editing.repeat.interval = v;
+    saveTodosSoon();
+    renderDetailState();
+    renderFlip();
+  });
   [$("#detail-title"), $("#detail-text")].forEach((el) => {
     el.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeTodoDetail();
@@ -1099,6 +1237,19 @@ async function bindEvents(): Promise<void> {
       void refreshBlur();
     }
   });
+
+  // 跨天自愈：重复打卡的“今天”归零不靠定时器逐个重置，
+  // 只在日期真的变了那一刻补一次渲染（30s 一比的空转开销可忽略）
+  let lastToday = todayStr();
+  setInterval(() => {
+    const now = todayStr();
+    if (now === lastToday) return;
+    const wasOnToday = selectedDate === lastToday;
+    lastToday = now;
+    if (wasOnToday) selectedDate = now;
+    if (view === "daily" && wasOnToday) render();
+    renderMini();
+  }, 30_000);
 }
 
 // ---- 启动 ----

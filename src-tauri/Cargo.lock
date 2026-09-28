@@ -1841,6 +1841,7 @@ dependencies = [
 name = "memopad"
 version = "0.5.0"
 dependencies = [
+ "chrono",
  "serde",
  "serde_json",
  "tauri",

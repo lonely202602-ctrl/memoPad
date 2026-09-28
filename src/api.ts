@@ -4,6 +4,11 @@ export type Theme = "system" | "light" | "dark";
 export type Blur = "mica" | "acrylic" | "clear" | "none";
 export type View = "daily" | "longterm";
 
+export interface Repeat {
+  kind: "daily" | "every_n_days";
+  interval: number; // every_n_days 的 N（锚点为创建日）
+}
+
 export interface Todo {
   id: string;
   kind: View;
@@ -13,6 +18,8 @@ export interface Todo {
   done: boolean;
   createdAt: number;
   doneAt: number | null;
+  repeat: Repeat | null; // 重复打卡配置，null = 不重复
+  doneDates: string[]; // 重复任务的打卡记录（YYYY-MM-DD）
 }
 
 export interface Settings {
