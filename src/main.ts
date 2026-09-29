@@ -779,7 +779,7 @@ function render(): void {
   } else {
     progressRow.style.visibility = "visible";
     const pct = Math.round((done.length / scope.length) * 100);
-    $("#progress-cat").style.left = `clamp(9px, ${pct}%, calc(100% - 9px))`;
+    $("#progress-cat").style.left = `clamp(8px, ${pct}%, calc(100% - 8px))`;
     $("#progress-text").innerHTML =
       done.length === scope.length
         ? `<b>全部完成</b> 🎉`

@@ -526,7 +526,7 @@ body[data-mini="1"] .mini-done {
   padding: 2px 16px 5px;
 }
 
-/* 进度尺：细刻度横尺 + 两端细括弧，LonelyCat 坐在尺上走到哪进度到哪 */
+/* 进度尺：细刻度横尺（中亮渐隐到两端）+ LonelyCat 猫头坐尺上走到哪进度到哪 */
 .progress-track {
   --ruler-line: color-mix(in srgb, var(--text) 62%, transparent);
   position: relative;
@@ -534,42 +534,18 @@ body[data-mini="1"] .mini-done {
   min-width: 0; /* flex 子项的隐式 min-width:auto 会拒绝收缩，把统计文字挤出窗口 */
   height: 20px;
   background:
-    linear-gradient(var(--ruler-line), var(--ruler-line)) 0 calc(100% - 2px) / 100% 1.5px no-repeat,
+    linear-gradient(90deg, var(--ruler-line), var(--accent), var(--ruler-line))
+      0 calc(100% - 2px) / 100% 1.5px no-repeat,
     repeating-linear-gradient(90deg, var(--ruler-line) 0 1px, transparent 1px 10%)
       center calc(100% - 4.5px) / calc(100% - 2px) 5px no-repeat;
 }
 
-/* 两端的括弧：细弧，贴着线头 */
-.progress-track::before,
-.progress-track::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 7px;
-  height: 13px;
-  border: 1.5px solid var(--accent);
-}
-
-.progress-track::before {
-  left: -10px;
-  transform: translateY(-50%);
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-}
-
-.progress-track::after {
-  right: -10px;
-  transform: translateY(-50%);
-  border-left: none;
-  border-radius: 0 8px 8px 0;
-}
-
-/* 坐在尺上的猫：paw 底刚好压线，left 随进度平滑走动 */
+/* 坐在尺上的猫头：paw 底刚好压线，left 随进度平滑走动 */
 .progress-cat {
   position: absolute;
   bottom: 2.5px;
   left: 50%;
-  width: 19px;
+  width: 17px;
   height: 14px;
   color: var(--text);
   transform: translateX(-50%);
