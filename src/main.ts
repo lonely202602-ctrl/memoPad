@@ -496,6 +496,17 @@ async function saveWindowPos(): Promise<void> {
     const pos = await win.outerPosition();
     const size = await win.innerSize();
     const sf = await win.scaleFactor();
+    const logical = size.toLogical(sf);
+    // 最小化时 Windows 把窗口挪去 -32000 停车位，此时的位置/尺寸全是垃圾值，
+    // 入库后下次启动窗口就会开在屏幕外——直接不入库
+    if (
+      pos.x <= -20000 ||
+      pos.y <= -20000 ||
+      logical.width < 200 ||
+      logical.height < 60
+    ) {
+      return;
+    }
     settings.windowX = pos.x;
     settings.windowY = pos.y;
     settings.windowW = Math.round(size.toLogical(sf).width);
@@ -1223,6 +1234,8 @@ async function bindEvents(): Promise<void> {
   let lastY: number | null = null;
   await win.onMoved(({ payload }) => {
     if (payload.x === lastX && payload.y === lastY) return;
+    // 停车位坐标（最小化）不是用户移动，跳过对齐也不触发保存
+    if (payload.x <= -20000 || payload.y <= -20000) return;
     lastX = payload.x;
     lastY = payload.y;
     alignWallpaper(payload.x, payload.y);

@@ -90,11 +90,33 @@ fn main() {
         .setup(|app| {
             let settings = storage::load_settings();
             if let Some(win) = app.get_webview_window("main") {
-                if let (Some(x), Some(y)) = (settings.window_x, settings.window_y) {
-                    let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+                // 还原前先验货：最小化时 Windows 会把窗口挪到 -32000 停车位并触发
+                // 移动事件，这种坐标（或显示器被拔后的越界坐标）一旦入库，下次
+                // 启动窗口就开在屏幕外，看起来像“程序打不开”。位置必须落在当前
+                // 某块可见显示器内才还原；尺寸不得小于迷你条下限（200×60）
+                let pos_ok = match win.available_monitors() {
+                    Ok(mons) => settings
+                        .window_x
+                        .zip(settings.window_y)
+                        .is_some_and(|(x, y)| {
+                            mons.iter().any(|m| {
+                                x >= m.position().x
+                                    && x < m.position().x + m.size().width as i32
+                                    && y >= m.position().y
+                                    && y < m.position().y + m.size().height as i32
+                            })
+                        }),
+                    Err(_) => false,
+                };
+                if pos_ok {
+                    if let (Some(x), Some(y)) = (settings.window_x, settings.window_y) {
+                        let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+                    }
                 }
                 if let (Some(w), Some(h)) = (settings.window_w, settings.window_h) {
-                    let _ = win.set_size(tauri::LogicalSize::new(w, h));
+                    if w >= 200.0 && h >= 60.0 {
+                        let _ = win.set_size(tauri::LogicalSize::new(w, h));
+                    }
                 }
                 let _ = win.set_always_on_top(settings.always_on_top);
                 if settings.blur != "none" {
