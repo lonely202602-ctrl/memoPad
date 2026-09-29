@@ -772,14 +772,14 @@ function render(): void {
     .filter((t) => doneOn(t, selectedDate))
     .sort((a, b) => (a.doneAt ?? 0) - (b.doneAt ?? 0) || a.createdAt - b.createdAt);
 
-  // 进度条
+  // 进度尺：猫坐尺上，left 即进度（clamp 防两端越出括弧）
   const progressRow = $("#progress-row");
   if (scope.length === 0) {
     progressRow.style.visibility = "hidden";
   } else {
     progressRow.style.visibility = "visible";
     const pct = Math.round((done.length / scope.length) * 100);
-    $("#progress-fill").style.width = `${pct}%`;
+    $("#progress-cat").style.left = `clamp(9px, ${pct}%, calc(100% - 9px))`;
     $("#progress-text").innerHTML =
       done.length === scope.length
         ? `<b>全部完成</b> 🎉`
