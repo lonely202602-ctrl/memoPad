@@ -1,6 +1,6 @@
 import "./styles.css";
 import { api, type Blur, type Settings, type Theme, type Todo, type View } from "./api";
-import { availableMonitors, getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { availableMonitors, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 
 const win = getCurrentWindow();
 
@@ -838,6 +838,37 @@ function renderSettingsState(): void {
   pathEl.title = settings.dataDir;
 }
 
+// 窗口健康自检：显示器睡眠/断开/拓扑变化可能把窗口孤立到所有屏幕之外，
+// 30s 一查，完全落在可见区域外就搬回第一块屏居中（主动隐藏的窗口不动它，
+// 挪一个看不见的窗口没有副作用，等显示时自然位置正常）
+async function windowHealthCheck(): Promise<void> {
+  try {
+    const [pos, size, mons] = await Promise.all([
+      win.outerPosition(),
+      win.outerSize(),
+      availableMonitors(),
+    ]);
+    if (mons.length === 0) return;
+    const l = pos.x;
+    const t = pos.y;
+    const r = pos.x + size.width;
+    const b = pos.y + size.height;
+    const stranded = !mons.some((m) => {
+      const ml = m.position.x;
+      const mt = m.position.y;
+      return l < ml + m.size.width && r > ml && t < mt + m.size.height && b > mt;
+    });
+    if (stranded) {
+      const m = mons[0];
+      const x = m.position.x + Math.max(0, Math.round((m.size.width - size.width) / 2));
+      const y = m.position.y + Math.max(0, Math.round((m.size.height - size.height) / 3));
+      await win.setPosition(new PhysicalPosition(x, y));
+    }
+  } catch {
+    /* 窗口可能正在销毁 */
+  }
+}
+
 // ---- 事件绑定 ----
 // ---- 详情抽屉 ----
 function fmtTs(ts: number): string {
@@ -1269,7 +1300,7 @@ async function bindEvents(): Promise<void> {
 
   // 跨天自愈：重复打卡的“今天”归零不靠定时器逐个重置，
   // 只在日期真的变了那一刻补一次渲染（30s 一比的空转开销可忽略）；
-  // 顺带做过夜顺延清扫（应用挂着一夜的情况）
+  // 顺带做过夜顺延清扫（应用挂着一夜的情况）与窗口健康自检
   let lastToday = todayStr();
   setInterval(() => {
     const now = todayStr();
@@ -1281,6 +1312,7 @@ async function bindEvents(): Promise<void> {
     if (view === "daily") render();
     renderMini();
   }, 30_000);
+  setInterval(() => void windowHealthCheck(), 30_000);
 }
 
 // ---- 启动 ----

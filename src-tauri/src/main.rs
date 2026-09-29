@@ -23,6 +23,17 @@ fn toggle_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
 }
 
+/// 托盘左键 = 只负责唤回：隐藏/最小化时显示并置前，可见时仅抢焦点。
+/// 之前是 show/hide 切换，挂机时鼠标误碰托盘图标一下窗口就"消失"，
+/// 用户以为程序坏了——误点的结果绝不能是丢窗口。
+fn show_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+}
+
 /// 单实例保护：创建命名互斥体，已存在则静默退出。
 /// 注意 CreateMutexW 成功时不会重置 GetLastError，必须先 SetLastError(0) 再判断。
 fn ensure_single_instance() {
@@ -148,7 +159,7 @@ fn main() {
                 })
                 .on_tray_icon_event(|tray, event| {
                     if matches!(event, TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, button_state: tauri::tray::MouseButtonState::Up, .. }) {
-                        toggle_main_window(tray.app_handle());
+                        show_main_window(tray.app_handle());
                     }
                 })
                 .build(app)?;
