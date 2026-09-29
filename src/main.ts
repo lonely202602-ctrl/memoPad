@@ -728,6 +728,22 @@ function carryOverToToday(): void {
   }
 }
 
+// 过夜自动顺延：把滞留在过去日期的未完成每日待办归位到今天。
+// 重复任务不参与（排程派生，date 只是锚点）；已完成的留在原日期作记录。
+// 触发点：启动时（应用关了一夜）+ 跨天定时器（应用挂着一夜）
+function autoCarryOverdue(): number {
+  const today = todayStr();
+  let n = 0;
+  for (const t of todos) {
+    if (t.kind === "daily" && !t.repeat && !t.done && t.date && t.date < today) {
+      t.date = today;
+      n++;
+    }
+  }
+  if (n) saveTodosSoon();
+  return n;
+}
+
 // ---- 渲染 ----
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
@@ -1252,7 +1268,8 @@ async function bindEvents(): Promise<void> {
   });
 
   // 跨天自愈：重复打卡的“今天”归零不靠定时器逐个重置，
-  // 只在日期真的变了那一刻补一次渲染（30s 一比的空转开销可忽略）
+  // 只在日期真的变了那一刻补一次渲染（30s 一比的空转开销可忽略）；
+  // 顺带做过夜顺延清扫（应用挂着一夜的情况）
   let lastToday = todayStr();
   setInterval(() => {
     const now = todayStr();
@@ -1260,7 +1277,8 @@ async function bindEvents(): Promise<void> {
     const wasOnToday = selectedDate === lastToday;
     lastToday = now;
     if (wasOnToday) selectedDate = now;
-    if (view === "daily" && wasOnToday) render();
+    autoCarryOverdue();
+    if (view === "daily") render();
     renderMini();
   }, 30_000);
 }
@@ -1271,6 +1289,7 @@ let activeLanPort = 9600;
 
 async function boot(): Promise<void> {
   [settings, todos] = await Promise.all([api.getSettings(), api.getTodos()]);
+  autoCarryOverdue(); // 关了一夜再开：昨天没完成的已归位到今天
   activeLanPort = settings.lanPort ?? 9600;
   applyThemeClass();
   // 折叠状态持久化：重启后仍为迷你条（窗口尺寸由 Rust 侧按保存值恢复）
